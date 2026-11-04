@@ -83,3 +83,30 @@ export interface ExportOptions {
   format: 'pdf' | 'docx';
   includePhoto?: boolean;
 }
+
+// Canonical schema-derived types are available alongside the legacy ResumeData
+// shape until the builder and exporters migrate in a later milestone.
+export type {
+  Achievement,
+  AwardEntry,
+  CertificationEntry as CanonicalCertificationEntry,
+  CustomSection,
+  CustomSectionEntry,
+  EducationEntry as CanonicalEducationEntry,
+  ExperienceEntry as CanonicalExperienceEntry,
+  InterestEntry,
+  LanguageEntry as CanonicalLanguageEntry,
+  MarginSettings,
+  PaperSize as CanonicalPaperSize,
+  PersonalInformation,
+  ProfilePhoto,
+  ProjectEntry as CanonicalProjectEntry,
+  PublicationEntry,
+  ResumeContent,
+  ResumeDesign,
+  ResumeDirection,
+  ResumeDocument,
+  ResumeLanguage,
+  SkillEntry as CanonicalSkillEntry,
+  VolunteeringEntry,
+} from '../schemas/resume.schema';

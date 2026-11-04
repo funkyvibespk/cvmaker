@@ -1,14 +1,11 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
-  Printer,
   ChevronDown,
   Check,
-  ArrowLeft,
-  ArrowRight,
   FileText,
   FileCheck,
   HelpCircle,
@@ -16,8 +13,8 @@ import {
 } from 'lucide-react';
 import { useI18nStore } from '@/features/internationalization/store';
 import { TEMPLATES_REGISTRY, getTemplateById } from '@/features/templates/registry';
-import { TemplateDefinition } from '@/features/templates/types';
-import { ResumeData } from '@/types/resume';
+import { useResumeStore, createStableResumeId } from '@/stores/resumeStore';
+import { toLegacyResumeData } from '@/lib/legacyResumeAdapter';
 import { downloadResumeDocx } from '@/features/docx-export/downloadDocx';
 import { downloadResumePdf } from '@/features/pdf-export/downloadPdf';
 import { FormatComparisonModal } from '@/features/export/FormatComparisonModal';
@@ -27,111 +24,79 @@ import { Container } from '@/components/ui/Container';
 
 function ResumeBuilderContent() {
   const searchParams = useSearchParams();
-  const templateIdParam = searchParams.get('template') || 'ats-classic';
+  const templateIdParam = searchParams.get('template');
 
-  const { t, dir, locale } = useI18nStore();
-  const ArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
+  const { t } = useI18nStore();
+  const resume = useResumeStore((state) => state.resume);
+  const validationIssues = useResumeStore((state) => state.validationIssues);
+  const updatePersonalInformation = useResumeStore((state) => state.updatePersonalInformation);
+  const addEntry = useResumeStore((state) => state.addEntry);
+  const updateEntry = useResumeStore((state) => state.updateEntry);
+  const deleteEntry = useResumeStore((state) => state.deleteEntry);
+  const updateDesign = useResumeStore((state) => state.updateDesign);
+  const validateResume = useResumeStore((state) => state.validateResume);
+  const personal = resume.content.personal;
+  const experience = resume.content.experience[0];
+  const activeTemplate = getTemplateById(resume.design.templateId);
+  const paperSize = resume.design.paperSize;
 
-  const [activeTemplate, setActiveTemplate] = useState<TemplateDefinition>(() =>
-    getTemplateById(templateIdParam)
-  );
+  useEffect(() => {
+    if (templateIdParam) updateDesign({ templateId: getTemplateById(templateIdParam).id });
+  }, [templateIdParam, updateDesign]);
 
   const [templateDropdownOpen, setTemplateDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'personal' | 'experience' | 'skills'>('personal');
-  const [paperSize, setPaperSize] = useState<'a4' | 'letter'>('a4');
   const [viewMode, setViewMode] = useState<'split' | 'form-only' | 'preview-only'>('split');
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
 
-  // Resume Universal Data State
-  const [formData, setFormData] = useState({
-    fullName: 'Alexander Vance',
-    jobTitle: 'Principal Software Architect',
-    email: 'alexander.vance@example.com',
-    phone: '+1 (555) 234-5678',
-    location: 'San Francisco, CA',
-    portfolio: 'linkedin.com/in/alexandervance',
-    summary:
-      'Seasoned software architect with 10+ years designing resilient distributed systems, enterprise cloud backends, and high-throughput real-time APIs. Proven track record leading multi-disciplinary engineering teams to deliver mission-critical solutions.',
-    experienceRole: 'Staff Cloud Architect',
-    experienceCompany: 'Enterprise Systems Inc.',
-    experienceDates: '2021 — Present',
-    experienceBullets:
-      '• Architected core microservices handling 25M+ daily requests with 99.99% availability.\n• Reduced cloud infrastructure costs by 38% through container optimization and auto-scaling.\n• Mentored 14 senior engineers in system design principles and distributed cache architectures.',
-    skills:
-      'Cloud Architecture, Kubernetes, TypeScript, Go, PostgreSQL, Kafka, Terraform, Microservices, CI/CD Pipelines, High-Availability Systems',
-  });
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const updateExperience = (patch: Record<string, unknown>) => {
+    if (experience) {
+      updateEntry('experience', experience.id, patch);
+    } else {
+      addEntry('experience', {
+        id: createStableResumeId('experience'),
+        jobTitle: '', employer: '', isCurrent: false, achievements: [], ...patch,
+      });
+    }
   };
 
-  // Convert builder form state to Universal ResumeData
-  const getUniversalResumeData = (): ResumeData => {
-    const bulletList = formData.experienceBullets
-      .split('\n')
-      .map((b) => b.trim())
-      .filter(Boolean);
+  const experienceDateText = experience
+    ? `${experience.startDate ?? ''} — ${experience.isCurrent ? 'Present' : experience.endDate ?? ''}`.trim()
+    : '';
+  const achievementText = experience?.achievements.map((item) => `• ${item.text}`).join('\n') ?? '';
+  const skillsText = resume.content.skills.map((skill) => skill.name).join(', ');
 
-    const skillEntries = formData.skills
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .map((name, idx) => ({
-        id: `skill-${idx}`,
-        name,
-      }));
+  const updateAchievements = (value: string) => {
+    const existing = experience?.achievements ?? [];
+    const lines = value.split('\n').map((line) => line.trim().replace(/^[•*-]\s*/, '')).filter(Boolean);
+    const achievements = lines.map((text) => ({
+      id: existing.find((item) => item.text === text)?.id ?? createStableResumeId('achievement'),
+      text,
+    }));
+    updateExperience({ achievements });
+  };
 
-    return {
-      id: 'current-session-resume',
-      templateId: activeTemplate.id,
-      locale,
-      direction: dir,
-      paperSize,
-      personal: {
-        fullName: formData.fullName,
-        jobTitle: formData.jobTitle,
-        email: formData.email,
-        phone: formData.phone,
-        location: formData.location,
-        portfolio: formData.portfolio,
-        summary: formData.summary,
-      },
-      experience: [
-        {
-          id: 'exp-1',
-          jobTitle: formData.experienceRole,
-          company: formData.experienceCompany,
-          startDate: formData.experienceDates.split('—')[0]?.trim() || '2021',
-          endDate: formData.experienceDates.split('—')[1]?.trim() || 'Present',
-          current: true,
-          bullets: bulletList,
-        },
-      ],
-      education: [
-        {
-          id: 'edu-1',
-          degree: 'B.S. in Computer Science',
-          school: 'University of California, Berkeley',
-          endDate: '2015',
-        },
-      ],
-      skills: skillEntries,
-      projects: [],
-      certifications: [],
-      languages: [],
-    };
+  const updateSkills = (value: string) => {
+    const existing = resume.content.skills;
+    const names = value.split(',').map((skill) => skill.trim()).filter(Boolean);
+    const nextSkills = names.map((name) => ({
+      id: existing.find((skill) => skill.name === name)?.id ?? createStableResumeId('skill'),
+      name,
+    }));
+    existing.forEach((skill) => deleteEntry('skills', skill.id));
+    nextSkills.forEach((skill) => addEntry('skills', skill));
   };
 
   const handleExportPdf = () => {
-    downloadResumePdf(formData.fullName);
+    if (validateResume()) downloadResumePdf(personal.fullName);
   };
 
   const handleExportDocx = async () => {
     try {
       setIsExportingDocx(true);
-      const universalData = getUniversalResumeData();
-      await downloadResumeDocx(universalData, activeTemplate, { paperSize });
+      if (!validateResume()) return;
+      await downloadResumeDocx(toLegacyResumeData(resume), activeTemplate, { paperSize });
     } finally {
       setIsExportingDocx(false);
     }
@@ -173,7 +138,7 @@ function ResumeBuilderContent() {
                         key={tpl.id}
                         type="button"
                         onClick={() => {
-                          setActiveTemplate(tpl);
+                          updateDesign({ templateId: tpl.id });
                           setTemplateDropdownOpen(false);
                         }}
                         className={`flex w-full items-center justify-between px-3 py-2 text-xs transition-colors text-start hover:bg-slate-100 dark:hover:bg-slate-800 ${
@@ -210,7 +175,7 @@ function ResumeBuilderContent() {
               <div className="hidden sm:flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium dark:border-slate-800 dark:bg-slate-800">
                 <button
                   type="button"
-                  onClick={() => setPaperSize('a4')}
+                  onClick={() => updateDesign({ paperSize: 'a4' })}
                   className={`rounded-md px-2.5 py-1 ${
                     paperSize === 'a4'
                       ? 'bg-white shadow-2xs text-slate-900 font-semibold dark:bg-slate-700 dark:text-white'
@@ -221,7 +186,7 @@ function ResumeBuilderContent() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPaperSize('letter')}
+                  onClick={() => updateDesign({ paperSize: 'letter' })}
                   className={`rounded-md px-2.5 py-1 ${
                     paperSize === 'letter'
                       ? 'bg-white shadow-2xs text-slate-900 font-semibold dark:bg-slate-700 dark:text-white'
@@ -328,6 +293,11 @@ function ResumeBuilderContent() {
 
             {/* Active Form Fields */}
             <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-4">
+              {validationIssues.length > 0 && (
+                <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                  Please correct the resume data before exporting: {validationIssues[0].message}
+                </div>
+              )}
               {activeTab === 'personal' && (
                 <div className="space-y-4">
                   <div>
@@ -336,8 +306,8 @@ function ResumeBuilderContent() {
                     </label>
                     <input
                       type="text"
-                      value={formData.fullName}
-                      onChange={(e) => handleInputChange('fullName', e.target.value)}
+                      value={personal.fullName}
+                      onChange={(e) => updatePersonalInformation({ fullName: e.target.value })}
                       className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
                   </div>
@@ -348,8 +318,8 @@ function ResumeBuilderContent() {
                     </label>
                     <input
                       type="text"
-                      value={formData.jobTitle}
-                      onChange={(e) => handleInputChange('jobTitle', e.target.value)}
+                      value={personal.professionalTitle ?? ''}
+                      onChange={(e) => updatePersonalInformation({ professionalTitle: e.target.value })}
                       className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
                   </div>
@@ -361,8 +331,8 @@ function ResumeBuilderContent() {
                       </label>
                       <input
                         type="email"
-                        value={formData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        value={personal.email ?? ''}
+                        onChange={(e) => updatePersonalInformation({ email: e.target.value })}
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </div>
@@ -372,8 +342,8 @@ function ResumeBuilderContent() {
                       </label>
                       <input
                         type="text"
-                        value={formData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        value={personal.phone ?? ''}
+                        onChange={(e) => updatePersonalInformation({ phone: e.target.value })}
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </div>
@@ -386,8 +356,8 @@ function ResumeBuilderContent() {
                       </label>
                       <input
                         type="text"
-                        value={formData.location}
-                        onChange={(e) => handleInputChange('location', e.target.value)}
+                        value={personal.location ?? ''}
+                        onChange={(e) => updatePersonalInformation({ location: e.target.value })}
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </div>
@@ -397,8 +367,8 @@ function ResumeBuilderContent() {
                       </label>
                       <input
                         type="text"
-                        value={formData.portfolio}
-                        onChange={(e) => handleInputChange('portfolio', e.target.value)}
+                        value={personal.website ?? personal.linkedIn ?? ''}
+                        onChange={(e) => updatePersonalInformation({ website: e.target.value })}
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </div>
@@ -410,8 +380,8 @@ function ResumeBuilderContent() {
                     </label>
                     <textarea
                       rows={4}
-                      value={formData.summary}
-                      onChange={(e) => handleInputChange('summary', e.target.value)}
+                      value={personal.summary ?? ''}
+                      onChange={(e) => updatePersonalInformation({ summary: e.target.value })}
                       className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white leading-relaxed"
                     />
                   </div>
@@ -427,8 +397,8 @@ function ResumeBuilderContent() {
                       </label>
                       <input
                         type="text"
-                        value={formData.experienceRole}
-                        onChange={(e) => handleInputChange('experienceRole', e.target.value)}
+                        value={experience?.jobTitle ?? ''}
+                        onChange={(e) => updateExperience({ jobTitle: e.target.value })}
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </div>
@@ -438,8 +408,8 @@ function ResumeBuilderContent() {
                       </label>
                       <input
                         type="text"
-                        value={formData.experienceCompany}
-                        onChange={(e) => handleInputChange('experienceCompany', e.target.value)}
+                        value={experience?.employer ?? ''}
+                        onChange={(e) => updateExperience({ employer: e.target.value })}
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                       />
                     </div>
@@ -451,8 +421,12 @@ function ResumeBuilderContent() {
                     </label>
                     <input
                       type="text"
-                      value={formData.experienceDates}
-                      onChange={(e) => handleInputChange('experienceDates', e.target.value)}
+                      value={experienceDateText}
+                      onChange={(e) => {
+                        const [startDate = '', ...endParts] = e.target.value.split(/[—–]/);
+                        const endDate = endParts.join('—').trim();
+                        updateExperience({ startDate: startDate.trim(), endDate: endDate === 'Present' ? '' : endDate, isCurrent: endDate === 'Present' });
+                      }}
                       className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
                   </div>
@@ -463,8 +437,8 @@ function ResumeBuilderContent() {
                     </label>
                     <textarea
                       rows={5}
-                      value={formData.experienceBullets}
-                      onChange={(e) => handleInputChange('experienceBullets', e.target.value)}
+                      value={achievementText}
+                      onChange={(e) => updateAchievements(e.target.value)}
                       className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white leading-relaxed font-mono text-xs"
                     />
                   </div>
@@ -479,16 +453,16 @@ function ResumeBuilderContent() {
                     </label>
                     <textarea
                       rows={4}
-                      value={formData.skills}
-                      onChange={(e) => handleInputChange('skills', e.target.value)}
+                      value={skillsText}
+                      onChange={(e) => updateSkills(e.target.value)}
                       placeholder={t.builder.skillsPlaceholder}
                       className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white leading-relaxed"
                     />
                   </div>
 
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 space-y-1">
-                    <p className="font-semibold text-slate-700 dark:text-slate-300">Dual Export Guaranteed:</p>
-                    <p>Both PDF and Word (.docx) exports faithfully consume your inputs and apply the selected template formatting.</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">Export formats:</p>
+                    <p>PDF and Word (.docx) downloads use the current resume data.</p>
                   </div>
                 </div>
               )}
@@ -522,25 +496,25 @@ function ResumeBuilderContent() {
                       className="text-2xl sm:text-3xl font-extrabold tracking-tight"
                       style={{ color: activeTemplate.accentColor }}
                     >
-                      {formData.fullName || 'Your Name'}
+                      {personal.fullName || 'Your Name'}
                     </h1>
                     <p className="text-sm sm:text-base font-semibold text-slate-700 mt-0.5">
-                      {formData.jobTitle || 'Professional Title'}
+                      {personal.professionalTitle || 'Professional Title'}
                     </p>
                   </div>
                   <div className="text-xs text-slate-500 text-start sm:text-end space-y-0.5">
-                    {formData.location && <div>{formData.location}</div>}
-                    {formData.email && <div>{formData.email}</div>}
-                    {formData.phone && <div>{formData.phone}</div>}
-                    {formData.portfolio && (
-                      <div className="text-blue-600">{formData.portfolio}</div>
+                    {personal.location && <div>{personal.location}</div>}
+                    {personal.email && <div>{personal.email}</div>}
+                    {personal.phone && <div>{personal.phone}</div>}
+                    {(personal.website || personal.linkedIn) && (
+                      <div className="text-blue-600">{personal.website ?? personal.linkedIn}</div>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* Summary Section */}
-              {formData.summary && (
+              {personal.summary && (
                 <div className="mb-6 space-y-1.5">
                   <h2
                     className="text-xs font-bold uppercase tracking-wider border-b pb-1"
@@ -552,7 +526,7 @@ function ResumeBuilderContent() {
                     Executive Summary
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                    {formData.summary}
+                    {personal.summary}
                   </p>
                 </div>
               )}
@@ -572,23 +546,23 @@ function ResumeBuilderContent() {
                 <div className="space-y-1">
                   <div className="flex flex-col sm:flex-row justify-between text-xs sm:text-sm">
                     <span className="font-bold text-slate-900">
-                      {formData.experienceRole || 'Role Title'}
+                      {experience?.jobTitle || 'Role Title'}
                     </span>
                     <span className="text-slate-500 text-xs">
-                      {formData.experienceDates || 'Date Range'}
+                      {experienceDateText || 'Date Range'}
                     </span>
                   </div>
                   <div className="text-xs font-semibold text-slate-600">
-                    {formData.experienceCompany || 'Company / Organization'}
+                    {experience?.employer || 'Company / Organization'}
                   </div>
                   <div className="text-xs text-slate-600 whitespace-pre-line leading-relaxed pt-1">
-                    {formData.experienceBullets}
+                    {achievementText}
                   </div>
                 </div>
               </div>
 
               {/* Skills Section */}
-              {formData.skills && (
+              {resume.content.skills.length > 0 && (
                 <div className="space-y-2">
                   <h2
                     className="text-xs font-bold uppercase tracking-wider border-b pb-1"
@@ -600,13 +574,9 @@ function ResumeBuilderContent() {
                     Core Competencies
                   </h2>
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    {formData.skills
-                      .split(',')
-                      .map((s) => s.trim())
-                      .filter(Boolean)
-                      .map((skill, index) => (
+                    {resume.content.skills.map((skill) => (
                         <span
-                          key={index}
+                          key={skill.id}
                           className="px-2.5 py-0.5 rounded text-xs font-medium border"
                           style={{
                             borderColor: `${activeTemplate.accentColor}33`,
@@ -614,7 +584,7 @@ function ResumeBuilderContent() {
                             color: activeTemplate.accentColor,
                           }}
                         >
-                          {skill}
+                          {skill.name}
                         </span>
                       ))}
                   </div>

@@ -8,8 +8,8 @@ The core principle is **zero-retention, privacy-first client-side document autho
 - No remote database or cloud persistence.
 - No AI APIs or paid third-party dependencies.
 - No offline caching or service worker persistence.
-- High-fidelity PDF generation via browser-native print standards and vector-accurate rendering.
-- Genuinely editable Microsoft Word (.docx) generation client-side using `docx`.
+- PDF output through the existing browser print flow; typography and pagination still need refinement.
+- Client-side Microsoft Word (.docx) generation using `docx`; full canonical-section coverage and professional layout quality are still incomplete.
 
 ---
 
@@ -38,10 +38,10 @@ cvmaker/
 │   └── ads/                    # Isolated AdSense placeholder slots (policy-compliant)
 ├── features/                   # Core business logic domains
 │   ├── templates/              # Template catalog, template registry, metadata
-│   │   ├── registry.ts         # Index of the 10 professional resume templates
+│   │   ├── registry.ts         # Catalog of 10 template entries, without distinct renderers for each
 │   │   └── types.ts            # Template definition and configuration contracts
-│   ├── resume-editor/          # Dynamic form sections (React Hook Form + Zod)
-│   ├── resume-preview/         # Live preview stage, zoom, page simulation, pagination
+│   ├── resume-editor/          # Planned home for expanded canonical form sections
+│   ├── resume-preview/         # Planned reusable preview, zoom and pagination components
 │   ├── pdf-export/             # PDF generation utilities, print stylesheets, triggers
 │   │   └── downloadPdf.ts      # Native vector browser print trigger
 │   ├── docx-export/            # Word document (.docx) generation
@@ -67,49 +67,39 @@ cvmaker/
 
 ---
 
-## 3. Data Flow and State Management
+## 3. Current Data Flow and State Management
 
 ```mermaid
 flowchart LR
-    A["User Inputs Data"] --> B["React Hook Form + Zod Validation"]
-    B --> C["Zustand In-Memory Store"]
-    C --> D["Universal Resume Data Model"]
-    D --> E["Template Engine (10 Templates)"]
-    E --> F["Live Preview Stage (A4 / Letter)"]
-    D --> G["Browser Vector Print / PDF Export"]
-    D --> H["Client-Side docx Packer / Word DOCX Export"]
+    A["Current builder fields"] --> B["Zustand canonical ResumeDocument"]
+    B --> C["Zod validation at load/edit/export boundaries"]
+    C --> D["Current single-layout preview"]
+    B --> E["Browser print / PDF flow"]
+    B --> F["Legacy adapter"]
+    F --> G["Existing DOCX generator"]
 ```
+
+The builder currently exposes personal information, one experience entry with repeatable achievements, and skills. The store API supports the full canonical model, but complete section editing controls and a template renderer are future work. Resume data remains in browser memory and is not persisted. The interface language store is separate from the resume document's language and direction settings.
 
 ---
 
-## 4. Universal Dual Export Architecture (PDF + DOCX)
+## 4. Existing Export Paths and Compatibility Boundary
 
-The system supports two complementary document export formats, both generated 100% client-side without external APIs:
+The project has two client-side export paths, but they do not yet share a fully migrated renderer/export model:
 
 ```mermaid
 flowchart TD
-    Data["Universal ResumeData Model"] --> Exporters{"Universal Exporters"}
-    Exporters -->|"Browser Native Print Engine"| PDF["Adobe PDF (.pdf)"]
-    Exporters -->|"docx OpenXML Client Engine"| DOCX["Microsoft Word (.docx)"]
-    
-    PDF --> PDF_Features["• Pixel-perfect vector layout\n• A4 & Letter dimensions\n• Clickable hyperlinks\n• Embedded fonts & full RTL"]
-    DOCX --> DOCX_Features["• Truly editable Word content\n• Native paragraphs & headings\n• OpenXML BiDi rightToLeft\n• Zero image-rasterization"]
+    Canonical["Canonical ResumeDocument"] --> PDF["Existing browser print flow"]
+    Canonical --> Adapter["Canonical-to-legacy adapter"]
+    Adapter --> Legacy["Legacy ResumeData API"]
+    Legacy --> DOCX["Existing DOCX generator"]
 ```
 
-### Template-Independent Architecture:
-Adding new templates does **not** require writing individual export modules:
-1. Every template defines an `exportStyles` descriptor (primary color hex, secondary color hex, typography stack, header alignment, border rules).
-2. The universal DOCX generator ([`generateResumeDocx`](file:///d:/Projects%20Antigravity/cvmaker/features/docx-export/generateDocx.ts)) consumes `(resumeData, template)` and renders native Word OpenXML paragraphs, headings, bullet lists, and borders dynamically.
-3. The universal PDF exporter consumes the responsive template component and applies standardized CSS `@media print` rules.
+The builder validates canonical data before calling either export path. PDF generation remains unchanged and uses its existing browser print behavior. `lib/legacyResumeAdapter.ts` maps currently supported canonical fields into `types/resume.ts` for the unchanged DOCX generator. That legacy type has no fields for awards, volunteering, publications, interests, or custom sections; those values are retained by the store but are not exported by the current DOCX path. The adapter should be retired only after the exporter is migrated to the canonical model.
 
-### Formatting Characteristics & Differences:
+### Known Export Limitations:
 - **PDF (.pdf)**:
-  - Fixed-layout vector document.
-  - Identical visual appearance across Windows, macOS, Linux, iOS, and Android.
-  - Preserves exact graphic columns, sidebar backgrounds, and millimeter-scale margins.
-  - Recommended for direct job submissions and automated ATS portals.
+  - Uses existing browser print functionality; typography, pagination, and cross-browser output still require improvement and visual verification.
 - **Microsoft Word (.docx)**:
-  - Reflowable, semantic document composed of genuine text, tables, and bullet points.
-  - Fully editable in Microsoft Word, Google Docs, Apple Pages, and LibreOffice.
-  - Reflow adaptation: Complex multi-column web elements map into cleanly structured sequential sections with horizontal rules, preventing floating text-box overlap or Word rendering anomalies.
-  - Full RTL support with `bidirectional: true` and `rightToLeft: true` runs for Urdu and Arabic.
+  - Generated by the existing legacy `ResumeData` generator and remains editable, but is not yet guaranteed to meet professional Word layout expectations or support all canonical sections.
+  - RTL and cross-suite rendering need direct output verification before being considered complete.

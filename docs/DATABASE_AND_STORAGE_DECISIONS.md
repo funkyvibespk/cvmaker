@@ -20,14 +20,13 @@ This policy is immutable and forms the bedrock of the application's user trust a
 All resume creation, editing, and customization operate entirely within the visitor's local browser memory:
 
 1. **State Engine**:
-   - Implemented via **Zustand** client-side stores.
-   - Resides exclusively in the JavaScript runtime heap of the browser tab.
+   - The canonical resume document is managed by `stores/resumeStore.ts` via **Zustand**.
+   - Resume content resides exclusively in the JavaScript runtime heap of the browser tab; it is not written to local storage or sent to a server.
 2. **Ephemeral Nature**:
    - The user's resume data is cleared automatically upon closing the tab or browser.
    - No cookie-based tracking or server-session identifiers are created or transmitted.
-3. **Loss Prevention via Unload Warning**:
-   - Because data is purely in-memory, a standard browser `beforeunload` event listener is active while the resume state is dirty (has user input).
-   - If the user reloads or navigates away, the browser prompts with a confirmation dialog to prevent accidental data loss.
+3. **Loss Prevention**:
+   - A dirty-state `beforeunload` warning is not yet implemented. Users can lose the in-memory resume if they reload or leave the page.
 
 ---
 

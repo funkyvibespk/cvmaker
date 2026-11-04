@@ -5,12 +5,10 @@ import Link from 'next/link';
 import {
   Search,
   ShieldCheck,
-  Check,
   X,
   ArrowRight,
   ArrowLeft,
   Sparkles,
-  Layout,
   Filter,
 } from 'lucide-react';
 import { useI18nStore } from '@/features/internationalization/store';
@@ -29,7 +27,7 @@ export default function TemplatesPage() {
   const [atsOnly, setAtsOnly] = useState(false);
   const [inspectingTemplate, setInspectingTemplate] = useState<TemplateDefinition | null>(null);
 
-  const categories = [
+  const categories: Array<{ id: 'all' | TemplateCategory; label: string }> = [
     { id: 'all', label: t.gallery.filterAll },
     { id: 'ats', label: t.gallery.filterAts },
     { id: 'modern', label: t.gallery.filterModern },
@@ -122,7 +120,7 @@ export default function TemplatesPage() {
             {categories.map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => setSelectedCategory(cat.id as any)}
+                onClick={() => setSelectedCategory(cat.id)}
                 className={`rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition-all ${
                   selectedCategory === cat.id
                     ? 'bg-slate-900 text-white shadow-xs dark:bg-slate-50 dark:text-slate-900'

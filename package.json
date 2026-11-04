@@ -2,11 +2,15 @@
   "name": "cvmaker",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-isolation=none tests/resume.schema.test.mjs tests/resume-store.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.2",

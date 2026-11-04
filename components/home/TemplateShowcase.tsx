@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useI18nStore } from '@/features/internationalization/store';
 import { TEMPLATES_REGISTRY } from '@/features/templates/registry';
+import { TemplateCategory } from '@/features/templates/types';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Container } from '@/components/ui/Container';
 
 export function TemplateShowcase() {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'ats' | 'modern' | 'corporate' | 'creative'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | TemplateCategory>('all');
   const { t, dir } = useI18nStore();
   const ArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
 
@@ -35,16 +36,16 @@ export function TemplateShowcase() {
 
         {/* Filter Pills */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
-          {[
+          {([
             { id: 'all', label: t.templates.filterAll },
             { id: 'ats', label: t.templates.filterAts },
             { id: 'modern', label: t.templates.filterModern },
             { id: 'corporate', label: t.gallery.filterCorporate },
             { id: 'creative', label: t.templates.filterCreative },
-          ].map((tab) => (
+          ] satisfies Array<{ id: 'all' | TemplateCategory; label: string }>).map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveFilter(tab.id as any)}
+              onClick={() => setActiveFilter(tab.id)}
               className={`rounded-full px-4 py-1.5 text-xs sm:text-sm font-medium transition-all ${
                 activeFilter === tab.id
                   ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-50 dark:text-slate-900'

@@ -3,7 +3,7 @@
 ## 1. Hosting Target: Vercel
 The application is designed for serverless static and dynamic edge hosting on **Vercel**:
 - Framework preset: Next.js.
-- Node.js version: 20.x / 22.x LTS.
+- Node.js version: 24.x LTS (pinned by `package.json` and `.nvmrc`).
 - Free tier compatible (zero commercial dependencies or background worker fees).
 - Subdomain: Initially hosted on `*.vercel.app`, with custom domain configuration planned for later.
 
