@@ -147,7 +147,7 @@ export function CoreResumeEditor() {
     const frame = window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
         setIsPdfExportPending(false);
-        downloadResumePdf(pdfExportModel.document.design.paperSize, pdfExportModel.document.design.margins, pdfExportModel.document.content.personal.fullName, () => setPdfExportModel(null));
+        downloadResumePdf(pdfExportModel.document.design.paperSize, pdfExportModel.document.content.personal.fullName, () => setPdfExportModel(null));
       });
     });
     return () => window.cancelAnimationFrame(frame);

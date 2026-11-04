@@ -166,6 +166,42 @@ body {
   flex-direction: column;
 }
 
+.resume-print-pages {
+  width: var(--resume-paper-width);
+  margin: 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.resume-print-pages > thead {
+  display: table-header-group;
+}
+
+.resume-print-pages > tfoot {
+  display: table-footer-group;
+}
+
+.resume-print-pages td {
+  padding: 0;
+  vertical-align: top;
+}
+
+.resume-print-margin-top td {
+  height: var(--resume-margin-top);
+}
+
+.resume-print-margin-bottom td {
+  height: var(--resume-margin-bottom);
+}
+
+.resume-print-continuation .resume-section {
+  margin-top: 0;
+}
+
+.resume-print-continuation .resume-section-heading {
+  display: none;
+}
+
 .resume-section {
   margin-top: 18px;
   break-inside: auto;
@@ -304,7 +340,7 @@ body {
   }
 
   html.resume-pdf-print .resume-presentation--print {
-    width: 100% !important;
+    width: var(--resume-paper-width) !important;
     max-width: none !important;
     min-height: 0 !important;
     margin: 0 !important;
@@ -314,6 +350,14 @@ body {
     break-after: auto;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+
+  html.resume-pdf-print .resume-print-pages {
+    display: table !important;
+    width: var(--resume-paper-width) !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+    break-inside: auto;
   }
 
   .resume-section-heading,

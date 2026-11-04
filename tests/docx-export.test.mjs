@@ -92,6 +92,29 @@ test('DOCX contains every visible canonical section and structured entry content
   assert.match(xml, /w:numPr/);
 });
 
+test('DOCX keeps editable identity and vertically stacked contacts in a two-column ruled header', async () => {
+  const document = structuredClone(SAMPLE_RESUME_EN);
+  document.content.personal.gitHub = 'https://github.com/alexchen';
+  const { xml, relationships } = await docxParts(document);
+  const headerTable = xml.match(/<w:tbl\b[\s\S]*?<\/w:tbl>/)?.[0];
+  assert.ok(headerTable, 'header is a native Word table even without a profile photo');
+  const row = headerTable.match(/<w:tr\b[\s\S]*?<\/w:tr>/)?.[0];
+  assert.ok(row);
+  const cells = [...row.matchAll(/<w:tc\b[\s\S]*?<\/w:tc>/g)].map((match) => match[0]);
+  assert.equal(cells.length, 2, 'identity and contact details occupy separate columns');
+  assert.ok(textFromXml(cells[0]).includes('Alexandra Chen'));
+  assert.ok(textFromXml(cells[0]).includes('Senior Product Manager'));
+  assert.ok(!textFromXml(cells[0]).includes('alex.chen@example.com'));
+  for (const value of ['alex.chen@example.com', '+1 (415) 555-0192', 'San Francisco, CA', 'https://alexchen.io', 'https://linkedin.com/in/alexchen', 'https://github.com/alexchen']) {
+    assert.ok(textFromXml(cells[1]).includes(value), `contact column retains ${value}`);
+  }
+  const contactParagraphs = [...cells[1].matchAll(/<w:p\b[\s\S]*?<\/w:p>/g)].map((match) => textFromXml(match[0]));
+  assert.equal(contactParagraphs.length, 6, 'each available contact value has its own vertically stacked paragraph');
+  assert.ok(headerTable.includes('<w:bottom w:val="single"'), 'header has an editable Word bottom divider');
+  assert.match(relationships, /Target="mailto:alex\.chen@example\.com"/);
+  assert.match(relationships, /Target="tel:\+14155550192"/);
+});
+
 test('DOCX follows resolver order and excludes hidden sections without losing visible records', async () => {
   const document = structuredClone(SAMPLE_RESUME_EN);
   document.content.certifications[0].name = 'HIDDEN_CERTIFICATE_MARKER';

@@ -128,9 +128,63 @@ function SectionContent({ section, model }: { section: ResolvedResumeSection; mo
   return null;
 }
 
+function printSectionChunks(section: ResolvedResumeSection): ResolvedResumeSection[] {
+  if (section.kind === 'summary' || section.kind === 'skills' || section.kind === 'languages' || section.kind === 'interests') return [section];
+  if (section.kind === 'custom') {
+    return section.section.entries.map((entry) => ({ ...section, section: { ...section.section, entries: [entry] } }));
+  }
+  return section.entries.map((entry) => ({ ...section, entries: [entry] }) as ResolvedResumeSection);
+}
+
+function ResumeHeader({ model }: { model: ResumeExportModel }) {
+  const { personal } = model.document.content;
+  const contact = [personal.email, personal.phone, personal.location].filter(Boolean);
+  return <div className="resume-contact-header">
+    <div className="resume-identity">
+      {personal.photo?.src && <Image src={personal.photo.src} alt={personal.photo.altText || personal.fullName} width={76} height={76} unoptimized className="resume-photo" />}
+      <div>
+        <h1>{personal.fullName}</h1>
+        {personal.professionalTitle && <p className="resume-professional-title">{personal.professionalTitle}</p>}
+      </div>
+    </div>
+    <div className="resume-contact-details">
+      {contact.map((value) => <span key={value}>{value}</span>)}
+      {personal.website && <a href={personal.website}>{personal.website}</a>}
+      {personal.linkedIn && <a href={personal.linkedIn}>{personal.linkedIn}</a>}
+      {personal.gitHub && <a href={personal.gitHub}>{personal.gitHub}</a>}
+    </div>
+  </div>;
+}
+
+function PrintResumePresentation({ model, className, style, fontClass }: {
+  model: ResumeExportModel;
+  className: string;
+  style: CSSProperties;
+  fontClass: string;
+}) {
+  return <div className={`resume-presentation ${fontClass} ${className}`.trim()} style={style} dir={model.document.design.direction} lang={model.document.design.language} data-paper-size={model.document.design.paperSize}>
+    <table className="resume-print-pages" role="presentation" aria-hidden="true">
+      <colgroup>
+        <col style={{ width: 'var(--resume-margin-left)' }} />
+        <col style={{ width: 'calc(var(--resume-paper-width) - var(--resume-margin-left) - var(--resume-margin-right))' }} />
+        <col style={{ width: 'var(--resume-margin-right)' }} />
+      </colgroup>
+      <thead><tr className="resume-print-margin-top"><td colSpan={3} /></tr></thead>
+      <tfoot><tr className="resume-print-margin-bottom"><td colSpan={3} /></tr></tfoot>
+      <tbody>
+        <tr className="resume-print-header-row"><td /><td><ResumeHeader model={model} /></td><td /></tr>
+        {model.sections.flatMap((section) => printSectionChunks(section).map((chunk, index) => (
+          <tr className={index === 0 ? 'resume-print-section-row' : 'resume-print-section-row resume-print-continuation'} key={`${section.id}-${index}`}>
+            <td /><td><SectionContent section={chunk} model={model} /></td><td />
+          </tr>
+        )))}
+      </tbody>
+    </table>
+  </div>;
+}
+
 export function ResumePresentation({ model, className = '' }: { model: ResumeExportModel; className?: string }) {
-  const { content, design } = model.document;
-  const personal = content.personal;
+  const { design } = model.document;
   const paperWidth = design.paperSize === 'a4' ? '210mm' : '215.9mm';
   const paperHeight = design.paperSize === 'a4' ? '297mm' : '279.4mm';
   const fontClass = design.language === 'ur' ? 'font-urdu' : design.language === 'ar' ? 'font-arabic' : '';
@@ -148,25 +202,14 @@ export function ResumePresentation({ model, className = '' }: { model: ResumeExp
     '--resume-margin-bottom': `${design.margins.bottom}mm`,
     '--resume-margin-left': `${design.margins.left}mm`,
   } as CSSProperties;
-  const contact = [personal.email, personal.phone, personal.location].filter(Boolean);
+
+  if (className.split(/\s+/).includes('resume-presentation--print')) {
+    return <PrintResumePresentation model={model} className={className} style={style} fontClass={fontClass} />;
+  }
 
   return (
     <article className={`resume-presentation ${fontClass} ${className}`.trim()} style={style} dir={design.direction} lang={design.language} data-paper-size={design.paperSize}>
-      <div className="resume-contact-header">
-        <div className="resume-identity">
-          {personal.photo?.src && <Image src={personal.photo.src} alt={personal.photo.altText || personal.fullName} width={76} height={76} unoptimized className="resume-photo" />}
-          <div>
-            <h1>{personal.fullName}</h1>
-            {personal.professionalTitle && <p className="resume-professional-title">{personal.professionalTitle}</p>}
-          </div>
-        </div>
-        <div className="resume-contact-details">
-          {contact.map((value) => <span key={value}>{value}</span>)}
-          {personal.website && <a href={personal.website}>{personal.website}</a>}
-          {personal.linkedIn && <a href={personal.linkedIn}>{personal.linkedIn}</a>}
-          {personal.gitHub && <a href={personal.gitHub}>{personal.gitHub}</a>}
-        </div>
-      </div>
+      <ResumeHeader model={model} />
       <div className="resume-presentation-sections">
         {model.sections.map((section) => <SectionContent key={section.id} section={section} model={model} />)}
       </div>

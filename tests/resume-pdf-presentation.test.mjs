@@ -8,12 +8,11 @@ import { SAMPLE_RESUME_AR, SAMPLE_RESUME_EN } from '../lib/sampleResumeData.ts';
 const editorSource = await readFile(new URL('../features/resume-editor/CoreResumeEditor.tsx', import.meta.url), 'utf8');
 const printSource = await readFile(new URL('../features/pdf-export/downloadPdf.ts', import.meta.url), 'utf8');
 const cssSource = await readFile(new URL('../app/globals.css', import.meta.url), 'utf8');
+const presentationSource = await readFile(new URL('../features/resume-preview/ResumePresentation.tsx', import.meta.url), 'utf8');
 
 test('creates exact A4 and US Letter page rules', () => {
-  const margins = { top: 14, right: 16, bottom: 14, left: 16 };
-  assert.equal(getResumePageRule('a4', margins), '@page { size: 210mm 297mm; margin: 14mm 16mm 14mm 16mm; }');
-  assert.equal(getResumePageRule('letter', margins), '@page { size: 215.9mm 279.4mm; margin: 14mm 16mm 14mm 16mm; }');
-  assert.equal(getResumePageRule('a4', { top: 10, right: 12, bottom: 15, left: 18 }), '@page { size: 210mm 297mm; margin: 10mm 12mm 15mm 18mm; }');
+  assert.equal(getResumePageRule('a4'), '@page { size: 210mm 297mm; margin: 0; }');
+  assert.equal(getResumePageRule('letter'), '@page { size: 215.9mm 279.4mm; margin: 0; }');
 });
 
 test('shared presentation model retains every resolved English section and design token', () => {
@@ -45,9 +44,13 @@ test('PDF export snapshots the current store document and renders it in an isola
 });
 
 test('print page configuration follows the PDF export model paper size', () => {
-  assert.match(printSource, /getResumePageRule\(paperSize, margins\)/);
+  assert.match(printSource, /getResumePageRule\(paperSize\)/);
   assert.match(printSource, /resume-pdf-print/);
   assert.match(printSource, /window\.print\(\)/);
-  assert.match(editorSource, /document\.design\.margins/);
-  assert.match(cssSource, /resume-presentation--print\s*\{[^}]*width:\s*100%[^}]*padding:\s*0\s*!important/s);
+  assert.match(presentationSource, /className="resume-print-margin-top"/);
+  assert.match(presentationSource, /className="resume-print-margin-bottom"/);
+  assert.match(presentationSource, /--resume-margin-left/);
+  assert.match(cssSource, /resume-print-pages\s*>\s*thead\s*\{\s*display:\s*table-header-group/s);
+  assert.match(cssSource, /resume-print-pages\s*>\s*tfoot\s*\{\s*display:\s*table-footer-group/s);
+  assert.match(cssSource, /resume-presentation--print\s*\{[^}]*padding:\s*0\s*!important/s);
 });

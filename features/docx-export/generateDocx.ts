@@ -405,9 +405,8 @@ function photoRun(photo: PhotoData, alt: string): ImageRun {
   });
 }
 
-function contactChildren(model: ResumeExportModel) {
+function contactItems(model: ResumeExportModel) {
   const { personal } = model.document.content;
-  const { design } = model.document;
   const parts: Array<{ label: string; url?: string }> = [];
   if (personal.email) parts.push({ label: personal.email, url: `mailto:${personal.email}` });
   if (personal.phone) parts.push({ label: personal.phone, url: `tel:${personal.phone.replace(/[^+\d]/g, '')}` });
@@ -415,14 +414,10 @@ function contactChildren(model: ResumeExportModel) {
   if (personal.website) parts.push({ label: personal.website, url: personal.website });
   if (personal.linkedIn) parts.push({ label: personal.linkedIn, url: personal.linkedIn });
   if (personal.gitHub) parts.push({ label: personal.gitHub, url: personal.gitHub });
-
-  return parts.flatMap((part, index) => [
-    ...(index ? [run(design, '  ·  ', { color: '8A98A8', size: design.fontSizes.small })] : []),
-    part.url ? linkRun(design, part.label, part.url) : run(design, part.label, { color: '596A7D', size: design.fontSizes.small }),
-  ]);
+  return parts;
 }
 
-function headerParagraphs(model: ResumeExportModel): Paragraph[] {
+function identityParagraphs(model: ResumeExportModel): Paragraph[] {
   const { personal } = model.document.content;
   const { design } = model.document;
   const children: Paragraph[] = [new Paragraph({
@@ -440,49 +435,106 @@ function headerParagraphs(model: ResumeExportModel): Paragraph[] {
     })],
   })];
 
-  if (personal.professionalTitle) children.push(paragraph(design, personal.professionalTitle, { size: Math.min(design.fontSizes.heading, 15), color: '42566C', bold: true, after: 70, keepNext: true }));
-  const contact = contactChildren(model);
-  if (contact.length) children.push(new Paragraph({
-    ...paragraphBase(design, { spacing: { before: 0, after: 150, line: 240 }, keepNext: model.sections.length > 0, keepLines: true }),
-    children: contact,
+  if (personal.professionalTitle) children.push(paragraph(design, personal.professionalTitle, {
+    size: design.fontSizes.body,
+    color: '39465B',
+    bold: true,
+    after: 0,
+    keepLines: true,
   }));
   return children;
 }
 
-function createHeaderTable(model: ResumeExportModel, photo: PhotoData): Table {
+function contactParagraphs(model: ResumeExportModel): Paragraph[] {
+  const { design } = model.document;
+  const alignment = design.direction === 'rtl' ? AlignmentType.LEFT : AlignmentType.RIGHT;
+  return contactItems(model).map((item, index, items) => new Paragraph({
+    ...paragraphBase(design, {
+      alignment,
+      spacing: { before: 0, after: index === items.length - 1 ? 0 : 28, line: 250 },
+      keepLines: true,
+      widowControl: true,
+    }),
+    children: [item.url
+      ? linkRun(model.document.design, item.label, item.url)
+      : run(design, item.label, { color: '596A7D', size: design.fontSizes.small })],
+  }));
+}
+
+function headerCellBorders(accent: string) {
+  return {
+    ...noTableBorders,
+    bottom: { style: BorderStyle.SINGLE, size: 8, color: accent },
+  };
+}
+
+function createHeaderTable(model: ResumeExportModel, photo?: PhotoData): Table {
   const { personal } = model.document.content;
   const { design } = model.document;
   const dimensions = paperDimensions(design.paperSize);
   const contentWidth = convertMillimetersToTwip(dimensions.width - design.margins.left - design.margins.right);
-  const photoColumn = convertMillimetersToTwip(25);
-  const textColumn = contentWidth - photoColumn;
-  const imageParagraph = new Paragraph({
-    ...paragraphBase(design, { alignment: design.direction === 'rtl' ? AlignmentType.RIGHT : AlignmentType.LEFT, spacing: { before: 0, after: 0 } }),
-    children: [photoRun(photo, personal.photo?.altText || personal.fullName)],
-  });
-  const textParagraphs = headerParagraphs(model);
-  const imageCell = new TableCell({
-    width: { size: photoColumn, type: WidthType.DXA },
+  const contactWidth = Math.round(contentWidth * 0.42);
+  const identityWidth = contentWidth - contactWidth;
+  const accent = color(design.accentColor);
+  const cellMargins = { top: 0, bottom: 150, left: 70, right: 70 };
+  let identityContent: Array<Paragraph | Table> = identityParagraphs(model);
+
+  if (photo) {
+    const photoWidth = convertMillimetersToTwip(25);
+    const identityContentWidth = identityWidth - cellMargins.left - cellMargins.right;
+    const textWidth = identityContentWidth - photoWidth;
+    const image = new Paragraph({
+      ...paragraphBase(design, { alignment: design.direction === 'rtl' ? AlignmentType.RIGHT : AlignmentType.LEFT, spacing: { before: 0, after: 0 } }),
+      children: [photoRun(photo, personal.photo?.altText || personal.fullName)],
+    });
+    const imageCell = new TableCell({
+      width: { size: photoWidth, type: WidthType.DXA },
+      verticalAlign: 'center',
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+      borders: noTableBorders,
+      children: [image],
+    });
+    const identityTextCell = new TableCell({
+      width: { size: textWidth, type: WidthType.DXA },
+      verticalAlign: 'center',
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+      borders: noTableBorders,
+      children: identityParagraphs(model),
+    });
+    identityContent = [new Table({
+      rows: [new TableRow({ children: [imageCell, identityTextCell], cantSplit: true })],
+      width: { size: identityContentWidth, type: WidthType.DXA },
+      columnWidths: [photoWidth, textWidth],
+      layout: TableLayoutType.FIXED,
+      visuallyRightToLeft: design.direction === 'rtl',
+      borders: noTableBorders,
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+    })];
+  }
+
+  const identityCell = new TableCell({
+    width: { size: identityWidth, type: WidthType.DXA },
     verticalAlign: 'center',
-    margins: { top: 0, bottom: 0, left: 80, right: 80 },
-    borders: noTableBorders,
-    children: [imageParagraph],
+    margins: cellMargins,
+    borders: headerCellBorders(accent),
+    children: identityContent,
   });
-  const textCell = new TableCell({
-    width: { size: textColumn, type: WidthType.DXA },
+  const contacts = contactParagraphs(model);
+  const contactCell = new TableCell({
+    width: { size: contactWidth, type: WidthType.DXA },
     verticalAlign: 'center',
-    margins: { top: 0, bottom: 0, left: 80, right: 80 },
-    borders: noTableBorders,
-    children: textParagraphs,
+    margins: cellMargins,
+    borders: headerCellBorders(accent),
+    children: contacts.length ? contacts : [new Paragraph({ children: [new TextRun(' ')] })],
   });
-  const row = new TableRow({ children: design.direction === 'rtl' ? [textCell, imageCell] : [imageCell, textCell], cantSplit: true });
+  const row = new TableRow({ children: [identityCell, contactCell], cantSplit: true });
   return new Table({
     rows: [row],
     width: { size: contentWidth, type: WidthType.DXA },
-    columnWidths: design.direction === 'rtl' ? [textColumn, photoColumn] : [photoColumn, textColumn],
+    columnWidths: [identityWidth, contactWidth],
     layout: TableLayoutType.FIXED,
     visuallyRightToLeft: design.direction === 'rtl',
-    borders: noTableBorders,
+    borders: headerCellBorders(accent),
     margins: { top: 0, bottom: 0, left: 0, right: 0 },
   });
 }
@@ -503,8 +555,7 @@ export async function generateResumeDocx(model: ResumeExportModel): Promise<Blob
   const photo = resume.content.personal.photo?.src ? await photoFromSource(resume.content.personal.photo.src) : undefined;
   const children: Array<Paragraph | Table> = [];
 
-  if (photo) children.push(createHeaderTable(resolvedModel, photo));
-  else children.push(...headerParagraphs(resolvedModel));
+  children.push(createHeaderTable(resolvedModel, photo));
   for (const section of sections) {
     const sectionParagraphs: Paragraph[] = [];
     appendSection(sectionParagraphs, section, resolvedModel);
