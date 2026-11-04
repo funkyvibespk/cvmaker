@@ -117,7 +117,7 @@ The builder validates the current Zustand document, resolves order and visibilit
 
 DOCX page dimensions are explicitly set in twips from the selected A4 or US Letter size, rounded to the nearest twip; all four configured millimeter margins are applied. Font family, point sizes, accent color, resume language and text direction are read from canonical design settings. Semantic Word heading styles, native list numbering, keep-with-next heading behavior, and tab stops for dates support editable text and multi-page flow.
 
-Automated tests inspect the generated OOXML for content, section ordering/visibility, links, RTL properties, photo relationships/media bytes, page size, margins, and long-content retention. Visual page rendering still depends on an available Word-compatible renderer; do not infer cross-application layout fidelity from XML tests alone.
+Automated tests inspect the generated OOXML for content, section ordering/visibility, links, RTL properties, photo relationships/media bytes, page size, margins, and long-content retention. Microsoft Word is installed on the current QA machine, but automated Word access did not complete: Word COM activation hung and desktop state capture timed out twice. Therefore no rendered page was visually inspected and no page count is accepted from this run. The synthetic review set and manual Word checklist are in `qa/docx-visual-acceptance/`.
 
 ### Known Export Limitations:
 - **PDF (.pdf)**:
@@ -125,4 +125,4 @@ Automated tests inspect the generated OOXML for content, section ordering/visibi
 - **Microsoft Word (.docx)**:
   - Uses the canonical resolved model and keeps resume text editable; all visible canonical sections and links are covered by generated OOXML tests.
   - A4/Letter dimensions and configured margins are verified from `word/document.xml`; PNG photo embedding is verified from the media part and relationship.
-  - Word/LibreOffice visual rendering and Arabic/Urdu appearance remain unverified in this environment because no compatible desktop renderer is installed. Font substitution and cross-suite layout still need verification.
+  - Word/LibreOffice visual rendering and Arabic/Urdu appearance remain unverified in this run because the installed Word application could not be controlled by the available automation. Font substitution and cross-suite layout still need manual verification using the QA set.
