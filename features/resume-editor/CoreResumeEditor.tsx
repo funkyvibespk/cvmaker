@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -18,10 +17,12 @@ import { TextAreaField, TextField, SelectField } from '@/features/resume-editor/
 import { useI18nStore } from '@/features/internationalization/store';
 import { downloadResumeDocx } from '@/features/docx-export/downloadDocx';
 import { downloadResumePdf } from '@/features/pdf-export/downloadPdf';
+import { ResumePresentation } from '@/features/resume-preview/ResumePresentation';
+import { resolveResumeExportModel, type ResumeExportModel } from '@/features/export/resolveResumeExport';
 import { toLegacyResumeData } from '@/lib/legacyResumeAdapter';
 import { TEMPLATES_REGISTRY, getTemplateById } from '@/features/templates/registry';
 import { createStableResumeId, useResumeStore } from '@/stores/resumeStore';
-import type { EducationEntry, ExperienceEntry, ProjectEntry, ResumeDocument, SkillEntry } from '@/schemas/resume.schema';
+import type { EducationEntry, ExperienceEntry, ProjectEntry, SkillEntry } from '@/schemas/resume.schema';
 
 type CoreSection = 'personal' | 'experience' | 'education' | 'skills' | 'projects';
 
@@ -82,112 +83,11 @@ function SectionHeading({ title, description }: { title: string; description: st
   );
 }
 
-function PreviewSection({ title, accentColor, children }: { title: string; accentColor: string; children: ReactNode }) {
-  return (
-    <section className="mt-5 break-inside-avoid">
-      <h2 className="mb-2 border-b pb-1 text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: accentColor, borderColor: `${accentColor}35` }}>{title}</h2>
-      {children}
-    </section>
-  );
-}
-
 function AddEntryButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <Button type="button" variant="outline" onClick={onClick} className="w-full justify-center border-dashed">
       <Plus className="h-4 w-4" /> {label}
     </Button>
-  );
-}
-
-function ResumePreview({ resume }: { resume: ResumeDocument }) {
-  const { content, design } = resume;
-  const personal = content.personal;
-  const accentColor = getTemplateById(design.templateId).accentColor;
-  const profileLinks = [
-    personal.website && { label: 'Website', href: personal.website },
-    personal.linkedIn && { label: 'LinkedIn', href: personal.linkedIn },
-    personal.gitHub && { label: 'GitHub', href: personal.gitHub },
-  ].filter((link): link is { label: string; href: string } => Boolean(link));
-
-  return (
-    <article id="resume-print-area" dir={design.direction} lang={design.language}
-      className={`mx-auto min-h-[780px] w-full max-w-[680px] overflow-hidden border border-slate-200 bg-white p-6 text-slate-900 shadow-xl sm:p-9 ${design.language === 'ur' ? 'font-urdu' : design.language === 'ar' ? 'font-arabic' : ''}`}>
-      <header className="flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: `${accentColor}40` }}>
-        <div className="flex min-w-0 items-center gap-4">
-          {personal.photo?.src && (
-            <Image src={personal.photo.src} alt={personal.photo.altText || personal.fullName || 'Profile photo'} width={64} height={64} unoptimized className="h-16 w-16 shrink-0 rounded-full object-cover" />
-          )}
-          <div className="min-w-0">
-            <h1 className="break-words text-2xl font-extrabold leading-tight sm:text-3xl" style={{ color: accentColor }}>{personal.fullName || 'Your Name'}</h1>
-            {personal.professionalTitle && <p className="mt-1 text-sm font-semibold text-slate-700">{personal.professionalTitle}</p>}
-          </div>
-        </div>
-        <div className="min-w-0 space-y-1 text-xs text-slate-600 sm:text-end">
-          {personal.email && <a className="block break-all hover:underline" href={`mailto:${personal.email}`}>{personal.email}</a>}
-          {personal.phone && <a className="block hover:underline" href={`tel:${personal.phone}`}>{personal.phone}</a>}
-          {personal.location && <p>{personal.location}</p>}
-          {profileLinks.map((link) => <a key={link.label} className="block break-all text-blue-700 hover:underline" href={link.href} target="_blank" rel="noreferrer">{link.label}</a>)}
-        </div>
-      </header>
-
-      {personal.summary && <PreviewSection title="Professional summary" accentColor={accentColor}><p className="whitespace-pre-line text-xs leading-relaxed text-slate-700">{personal.summary}</p></PreviewSection>}
-
-      <PreviewSection title="Work experience" accentColor={accentColor}>
-        {content.experience.length ? <div className="space-y-4">
-          {content.experience.map((entry) => (
-            <div key={entry.id} className="break-inside-avoid">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <h3 className="text-sm font-bold">{entry.jobTitle || 'Job title'}</h3>
-                <span className="text-[11px] text-slate-500">{[entry.startDate, entry.isCurrent ? 'Present' : entry.endDate].filter(Boolean).join(' — ')}</span>
-              </div>
-              <p className="text-xs font-semibold text-slate-700">{entry.employer}{entry.location ? ` · ${entry.location}` : ''}</p>
-              {entry.description && <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-slate-600">{entry.description}</p>}
-              {entry.achievements.length > 0 && <ul className="mt-1 list-disc space-y-0.5 ps-4 text-xs leading-relaxed text-slate-600">{entry.achievements.map((achievement) => <li key={achievement.id}>{achievement.text}</li>)}</ul>}
-            </div>
-          ))}
-        </div> : <p className="text-xs italic text-slate-400">Add experience to show it here.</p>}
-      </PreviewSection>
-
-      <PreviewSection title="Education" accentColor={accentColor}>
-        {content.education.length ? <div className="space-y-3">
-          {content.education.map((entry) => (
-            <div key={entry.id} className="break-inside-avoid">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <h3 className="text-sm font-bold">{entry.institution || 'Institution'}</h3>
-                <span className="text-[11px] text-slate-500">{[entry.startDate, entry.endDate].filter(Boolean).join(' — ')}</span>
-              </div>
-              <p className="text-xs text-slate-700">{[entry.degree, entry.fieldOfStudy].filter(Boolean).join(' · ')}{entry.location ? ` · ${entry.location}` : ''}</p>
-              {entry.grade && <p className="text-xs text-slate-600">Grade: {entry.grade}</p>}
-              {entry.description && <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-slate-600">{entry.description}</p>}
-            </div>
-          ))}
-        </div> : <p className="text-xs italic text-slate-400">Add education to show it here.</p>}
-      </PreviewSection>
-
-      <PreviewSection title="Skills" accentColor={accentColor}>
-        {content.skills.length ? <div className="flex flex-wrap gap-2">
-          {content.skills.map((skill) => <span key={skill.id} className="rounded border px-2 py-1 text-[11px]" style={{ borderColor: `${accentColor}35`, color: accentColor }}>
-            {skill.name}{skill.category ? ` · ${skill.category}` : ''}{skill.proficiency ? ` (${skill.proficiency})` : ''}
-          </span>)}
-        </div> : <p className="text-xs italic text-slate-400">Add skills to show them here.</p>}
-      </PreviewSection>
-
-      <PreviewSection title="Projects" accentColor={accentColor}>
-        {content.projects.length ? <div className="space-y-3">
-          {content.projects.map((project) => (
-            <div key={project.id} className="break-inside-avoid">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <h3 className="text-sm font-bold">{project.url ? <a href={project.url} target="_blank" rel="noreferrer" className="hover:underline">{project.title || 'Project'}</a> : project.title || 'Project'}</h3>
-                <span className="text-[11px] text-slate-500">{[project.startDate, project.endDate].filter(Boolean).join(' — ')}</span>
-              </div>
-              {project.role && <p className="text-xs font-semibold text-slate-700">{project.role}</p>}
-              {project.description && <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-slate-600">{project.description}</p>}
-              {project.technologies.length > 0 && <p className="mt-1 text-[11px] text-slate-500">{project.technologies.join(' · ')}</p>}
-            </div>
-          ))}
-        </div> : <p className="text-xs italic text-slate-400">Add projects to show them here.</p>}
-      </PreviewSection>
-    </article>
   );
 }
 
@@ -210,6 +110,9 @@ export function CoreResumeEditor() {
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
   const [photoError, setPhotoError] = useState('');
+  const [pdfExportModel, setPdfExportModel] = useState<ResumeExportModel | null>(null);
+  const [isPdfExportPending, setIsPdfExportPending] = useState(false);
+  const previewModel = useMemo(() => resolveResumeExportModel(resume), [resume]);
   const activeTemplate = getTemplateById(resume.design.templateId);
   const personal = resume.content.personal;
   const experience = resume.content.experience;
@@ -234,8 +137,22 @@ export function CoreResumeEditor() {
   };
 
   const handleExportPdf = () => {
-    if (validateResume()) downloadResumePdf(personal.fullName);
+    if (!validateResume()) return;
+    const currentResume = useResumeStore.getState().resume;
+    setPdfExportModel(resolveResumeExportModel(currentResume));
+    setIsPdfExportPending(true);
   };
+
+  useEffect(() => {
+    if (!isPdfExportPending || !pdfExportModel) return;
+    const frame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        setIsPdfExportPending(false);
+        downloadResumePdf(pdfExportModel.document.design.paperSize, pdfExportModel.document.content.personal.fullName, () => setPdfExportModel(null));
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isPdfExportPending, pdfExportModel]);
   const handleExportDocx = async () => {
     try {
       setIsExportingDocx(true);
@@ -395,7 +312,8 @@ export function CoreResumeEditor() {
   })();
 
   return (
-    <div className="min-h-screen bg-slate-100/70 pb-16 dark:bg-slate-950">
+    <>
+    <div id="builder-ui" className="min-h-screen bg-slate-100/70 pb-16 dark:bg-slate-950">
       <div className="sticky top-16 z-30 border-b border-slate-200/80 bg-white/95 px-3 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 sm:px-4">
         <Container size="full">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -448,12 +366,16 @@ export function CoreResumeEditor() {
 
           <aside aria-label="Live resume preview" className={`${mobileView === 'edit' ? 'hidden lg:block' : 'block'} min-w-0`}>
             <div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">{t.builder.livePreview}</h2><p className="text-xs text-slate-500">Updates as you edit</p></div><Badge variant="accent" className="shrink-0">{resume.design.paperSize === 'a4' ? 'A4' : 'US Letter'}</Badge></div>
-            <div className="overflow-hidden rounded-xl bg-slate-200/70 p-2 sm:p-3 dark:bg-slate-900">{resume.design.paperSize === 'letter' ? <div className="mx-auto w-full max-w-[700px]"><ResumePreview resume={resume} /></div> : <ResumePreview resume={resume} />}</div>
+            <div className="resume-preview-stage overflow-hidden rounded-xl bg-slate-200/70 p-2 sm:p-3 dark:bg-slate-900"><ResumePresentation model={previewModel} className="resume-presentation--preview" /></div>
           </aside>
         </div>
       </Container>
 
       <FormatComparisonModal isOpen={comparisonModalOpen} onClose={() => setComparisonModalOpen(false)} onDownloadPdf={handleExportPdf} onDownloadDocx={handleExportDocx} />
     </div>
+    <div id="resume-pdf-document" data-paper-size={(pdfExportModel ?? previewModel).document.design.paperSize} aria-hidden="true">
+      <ResumePresentation model={pdfExportModel ?? previewModel} className="resume-presentation--print" />
+    </div>
+    </>
   );
 }

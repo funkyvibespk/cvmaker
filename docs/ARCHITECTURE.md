@@ -8,7 +8,7 @@ The core principle is **zero-retention, privacy-first client-side document autho
 - No remote database or cloud persistence.
 - No AI APIs or paid third-party dependencies.
 - No offline caching or service worker persistence.
-- PDF output through the existing browser print flow; typography and pagination still need refinement.
+- PDF output through a dedicated browser print document rendered by the shared resume presentation component.
 - Client-side Microsoft Word (.docx) generation using `docx`; full canonical-section coverage and professional layout quality are still incomplete.
 
 ---
@@ -41,9 +41,11 @@ cvmaker/
 │   │   ├── registry.ts         # Catalog of 10 template entries, without distinct renderers for each
 │   │   └── types.ts            # Template definition and configuration contracts
 │   ├── resume-editor/          # Core editor fields and five-section builder workspace
-│   ├── resume-preview/         # Planned reusable preview, zoom and pagination components
-│   ├── pdf-export/             # PDF generation utilities, print stylesheets, triggers
-│   │   └── downloadPdf.ts      # Native vector browser print trigger
+│   ├── resume-preview/         # Shared canonical preview / print presentation
+│   │   └── ResumePresentation.tsx
+│   ├── pdf-export/             # PDF page geometry and isolated browser print trigger
+│   │   ├── downloadPdf.ts      # Prints the dedicated resume document root
+│   │   └── printLayout.ts      # A4 and Letter page rules
 │   ├── docx-export/            # Word document (.docx) generation
 │   │   ├── generateDocx.ts     # Universal OpenXML document generator (client-side)
 │   │   └── downloadDocx.ts     # Client-side blob downloader
@@ -71,47 +73,52 @@ cvmaker/
 
 ```mermaid
 flowchart LR
-    A["Five core builder sections"] --> B["Zustand canonical ResumeDocument"]
+    A["Builder form and section navigation"] --> B["Zustand canonical ResumeDocument"]
     B --> C["Zod validation at load/edit/export boundaries"]
-    C --> D["Baseline preview of all core section entries"]
-    B --> E["Browser print / PDF flow"]
-    B --> F["Legacy adapter"]
-    F --> G["Existing DOCX generator"]
-    B --> H["resolveResumeExportModel"]
-    H --> I["Complete canonical document + ordered visible section descriptors"]
-    I -. "next exporter integration stage" .-> E
-    I -. "next exporter integration stage" .-> G
+    C --> D["resolveResumeExportModel"]
+    D --> E["Shared ResumePresentation"]
+    E --> F["Live preview"]
+    E --> G["Dedicated print-only document"]
+    G --> H["Browser print / PDF"]
+    B --> I["Legacy adapter"]
+    I --> J["Existing DOCX generator"]
 ```
 
 The builder exposes personal information, multiple experience entries and achievements, education, skills, and projects. Experience, education, and project entries can be reordered by stable ID. The preview displays all entries from those five core sections, but remains a single baseline layout. Store support for other canonical sections exists; their editor controls and a final template renderer are future work. Resume data remains in browser memory and is not persisted. The interface language store is separate from the resume document's language and direction settings; the preview applies the document's language and direction.
 
-## 4. Export-Neutral Data Resolution
+## 4. Shared Resume Presentation and PDF Output
 
-`features/export/resolveResumeExport.ts` accepts the canonical `ResumeDocument` and returns a `ResumeExportModel` containing that complete document plus its ordered, visible, non-empty section descriptors. The document remains the source of truth for every field, including empty sections, optional values, stable IDs, and the full design configuration. The ordered descriptor list references canonical entries without sorting or rewriting them.
+`features/export/resolveResumeExport.ts` accepts the canonical `ResumeDocument` and returns its complete content/design plus an ordered list of visible, non-empty canonical sections. Standard sections follow `design.sectionOrder`; omitted order tokens are appended in schema order. Custom sections retain their entry order and use `custom:<id>` resolved IDs. Hidden and empty section data remains in the document but is not presented.
 
-The resolver applies `design.sectionOrder`; unmentioned standard sections are appended in schema order. The `customSections` order token expands custom sections in their stored order, and custom sections can also be placed individually by canonical ID. Their resolved IDs are namespaced as `custom:<id>` to avoid collisions with standard section IDs. A hidden or empty section is omitted from the descriptor list, but its canonical data remains in `model.document`.
+`features/resume-preview/ResumePresentation.tsx` consumes that resolved model and renders personal/contact information and every supported canonical section. It applies language, direction, selected accent/font/font sizes, paper size, and configured margins. The live preview and dedicated `#resume-pdf-document` use this same component; the print root is separate from the editor and does not depend on the active section or mobile preview toggle.
 
-This is the shared data boundary for future PDF and DOCX migration. In this stage, the existing PDF path still prints the builder preview and the existing DOCX path still converts through `lib/legacyResumeAdapter.ts`; neither consumes `model.sections` yet. That compatibility boundary is explicit so the resolver does not imply output completeness before both renderers are migrated.
+`features/pdf-export/downloadPdf.ts` snapshots the validated current Zustand document, resolves it, waits for the dedicated print root to update, then invokes browser printing. It injects an exact A4 (`210 × 297 mm`) or US Letter (`215.9 × 279.4 mm`) `@page` rule. Print CSS hides the app shell/editor and prints only the dedicated resume document; its own contact header remains visible. Entry and heading break rules support multi-page output without shrinking content to one page.
+
+The live preview and print document use matching resolved section IDs and resume text. Browser rendering can still vary slightly by font availability and print implementation; English, Arabic/RTL, photo, comprehensive, long-document, A4, and Letter PDFs were rendered and visually inspected during milestone verification.
+
+The resolver remains format-neutral; it performs ordering, visibility, and empty-section filtering only. It does not format dates or create PDF- or Word-specific output.
 
 ---
 
-## 5. Existing Export Paths and Compatibility Boundary
+## 5. Existing DOCX Path and Compatibility Boundary
 
-The project has two client-side export paths, but they do not yet share a fully migrated renderer/export model:
+PDF now consumes the shared resolved presentation. DOCX remains a separate legacy path for the next export milestone:
 
 ```mermaid
 flowchart TD
-    Canonical["Canonical ResumeDocument"] --> PDF["Existing browser print flow"]
+    Canonical["Canonical ResumeDocument"] --> Resolver["Shared resolver"]
+    Resolver --> Presentation["Live preview and isolated print document"]
+    Presentation --> PDF["PDF browser print"]
     Canonical --> Adapter["Canonical-to-legacy adapter"]
     Adapter --> Legacy["Legacy ResumeData API"]
     Legacy --> DOCX["Existing DOCX generator"]
 ```
 
-The builder validates canonical data before calling either export path. PDF generation remains unchanged and uses its existing browser print behavior. `lib/legacyResumeAdapter.ts` maps currently supported canonical fields into `types/resume.ts` for the unchanged DOCX generator. That legacy type has no fields for awards, volunteering, publications, interests, or custom sections; those values are retained by the store but are not exported by the current DOCX path. The adapter should be retired only after the exporter is migrated to the canonical model.
+The builder validates canonical data before either export path. `lib/legacyResumeAdapter.ts` maps currently supported canonical fields into `types/resume.ts` for the unchanged DOCX generator. That legacy type has no fields for awards, volunteering, publications, interests, or custom sections; those values are retained by the store but are not exported by the current DOCX path. The adapter should be retired only after the DOCX generator is migrated to consume the shared resolved model.
 
 ### Known Export Limitations:
 - **PDF (.pdf)**:
-  - Uses existing browser print functionality; typography, pagination, and cross-browser output still require improvement and visual verification.
+  - Prints only the shared dedicated resume document. A4, Letter, English, Arabic, photo, comprehensive-section, and long-document outputs have been exercised locally. Browser/font differences still warrant broader cross-browser verification.
 - **Microsoft Word (.docx)**:
   - Generated by the existing legacy `ResumeData` generator and remains editable, but is not yet guaranteed to meet professional Word layout expectations or support all canonical sections.
   - RTL and cross-suite rendering need direct output verification before being considered complete.

@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-isolation=none tests/resume.schema.test.mjs tests/resume-store.test.mjs tests/resume-export-model.test.mjs"
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-isolation=none tests/resume.schema.test.mjs tests/resume-store.test.mjs tests/resume-export-model.test.mjs tests/resume-pdf-presentation.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.2",
