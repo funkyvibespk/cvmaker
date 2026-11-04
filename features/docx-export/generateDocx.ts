@@ -347,6 +347,56 @@ function rasterDimensions(data: Uint8Array, type: 'png' | 'jpg'): { width: numbe
   return { width: 0, height: 0 };
 }
 
+async function circularPhotoPng(bytes: Uint8Array, sourceType: 'png' | 'jpg' | 'webp'): Promise<PhotoData | undefined> {
+  if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return undefined;
+
+  let bitmap: ImageBitmap | undefined;
+  try {
+    const mimeType = sourceType === 'jpg' ? 'image/jpeg' : `image/${sourceType}`;
+    const bitmapBytes = new Uint8Array(bytes.byteLength);
+    bitmapBytes.set(bytes);
+    bitmap = await createImageBitmap(new Blob([bitmapBytes.buffer], { type: mimeType }));
+    const cropSize = Math.min(bitmap.width, bitmap.height);
+    if (!Number.isFinite(cropSize) || cropSize <= 0) return undefined;
+
+    const scale = Math.min(1, 640 / cropSize);
+    const size = Math.max(1, Math.round(cropSize * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext('2d');
+    if (!context) return undefined;
+
+    // The new canvas starts transparent. Clip drawing to a centered circle so
+    // Word displays the same circular portrait treatment as the PDF preview.
+    context.clearRect(0, 0, size, size);
+    context.save();
+    context.beginPath();
+    context.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+    context.clip();
+    context.drawImage(
+      bitmap,
+      (bitmap.width - cropSize) / 2,
+      (bitmap.height - cropSize) / 2,
+      cropSize,
+      cropSize,
+      0,
+      0,
+      size,
+      size,
+    );
+    context.restore();
+
+    const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!png) return undefined;
+    return { data: new Uint8Array(await png.arrayBuffer()), type: 'png', width: size, height: size };
+  } catch {
+    return undefined;
+  } finally {
+    bitmap?.close();
+  }
+}
+
 async function photoFromSource(src: string): Promise<PhotoData | undefined> {
   try {
     const response = await fetch(src);
@@ -356,14 +406,11 @@ async function photoFromSource(src: string): Promise<PhotoData | undefined> {
     if (!sourceType || bytes.length > 8 * 1024 * 1024) return undefined;
     if ((sourceType === 'png' && bytes.length < 24) || (sourceType === 'jpg' && bytes.length < 10)) return undefined;
 
+    const circularPhoto = await circularPhotoPng(bytes, sourceType);
+    if (circularPhoto) return circularPhoto;
+
     if (sourceType !== 'webp') {
-      let { width, height } = rasterDimensions(bytes, sourceType);
-      if (typeof createImageBitmap === 'function') {
-        const bitmap = await createImageBitmap(new Blob([bytes]));
-        width = bitmap.width;
-        height = bitmap.height;
-        bitmap.close();
-      }
+      const { width, height } = rasterDimensions(bytes, sourceType);
       if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return undefined;
       return { data: bytes, type: sourceType, width, height };
     }

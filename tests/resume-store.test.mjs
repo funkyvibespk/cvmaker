@@ -28,6 +28,38 @@ test('updates personal information in the canonical resume document', () => {
   assert.equal(store.getState().isDirty, true);
 });
 
+test('preserves text input exactly while typing, including trailing spaces and middle edits', () => {
+  store.getState().initializeResume(SAMPLE_RESUME_EN);
+
+  store.getState().updatePersonalInformation({ fullName: 'Kamran' });
+  store.getState().updatePersonalInformation({ fullName: 'Kamran ' });
+  assert.equal(store.getState().resume.content.personal.fullName, 'Kamran ');
+  store.getState().updatePersonalInformation({ fullName: 'Kamran  ' });
+  assert.equal(store.getState().resume.content.personal.fullName, 'Kamran  ');
+  store.getState().updatePersonalInformation({ fullName: 'Kamran Khan' });
+  assert.equal(store.getState().resume.content.personal.fullName, 'Kamran Khan');
+
+  // This is the exact value a controlled input emits after inserting a middle space.
+  store.getState().updatePersonalInformation({ fullName: 'KamranKhan' });
+  store.getState().updatePersonalInformation({ fullName: 'Kamran Khan' });
+  assert.equal(store.getState().resume.content.personal.fullName, 'Kamran Khan');
+
+  const experience = store.getState().resume.content.experience[0];
+  store.getState().updateEntry('experience', experience.id, { jobTitle: 'Product Manager ' });
+  assert.equal(store.getState().resume.content.experience[0].jobTitle, 'Product Manager ');
+  store.getState().updateEntry('experience', experience.id, { description: 'Build products for teams ' });
+  assert.equal(store.getState().resume.content.experience[0].description, 'Build products for teams ');
+  assert.equal(store.getState().validationIssues.length, 0);
+});
+
+test('normalizes trimmed text only when explicit resume validation succeeds', () => {
+  store.getState().initializeResume(SAMPLE_RESUME_EN);
+  store.getState().updatePersonalInformation({ fullName: 'Kamran Khan ' });
+  assert.equal(store.getState().resume.content.personal.fullName, 'Kamran Khan ');
+  assert.equal(store.getState().validateResume(), true);
+  assert.equal(store.getState().resume.content.personal.fullName, 'Kamran Khan');
+});
+
 test('adds, edits, and deletes entries in every repeatable resume section by stable ID', () => {
   store.getState().initializeResume(SAMPLE_RESUME_EN);
   const examples = [

@@ -154,7 +154,9 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   const commitDraft = (resume: ResumeDocument, isDirty = true) => {
     const result = ResumeDocumentSchema.safeParse(resume);
     if (result.success) {
-      set({ resume: result.data, validationIssues: [], isDirty });
+      // Zod trims text as part of final validation. Keep the source draft here so
+      // controlled inputs retain trailing spaces while the user is typing.
+      set({ resume, validationIssues: [], isDirty });
     } else {
       // Keep the user's draft intact and expose its validation errors for correction.
       set({ resume, validationIssues: formatIssues(result.error.issues), isDirty });
@@ -264,11 +266,9 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
 
       // The existing ID is authoritative; edits cannot change an entry's identity.
       const updated = { ...existing, ...changes, id };
-      const parsedEntry = entrySchemas[section].safeParse(updated);
-      const nextEntry = parsedEntry.success ? parsedEntry.data : updated;
       const content = {
         ...resume.content,
-        [section]: currentEntries.map((entry) => (entry.id === id ? nextEntry : entry)),
+        [section]: currentEntries.map((entry) => (entry.id === id ? updated : entry)),
       } as ResumeContent;
       commitDraft({ ...resume, content });
       return true;
@@ -325,10 +325,8 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       const existing = section.entries.find((item) => item.id === entryId);
       if (!existing) return false;
       const updated = { ...existing, ...changes, id: entryId };
-      const parsedEntry = CustomSectionEntrySchema.safeParse(updated);
-      const nextEntry = parsedEntry.success ? parsedEntry.data : updated;
       return get().updateEntry('customSections', sectionId, {
-        entries: section.entries.map((item) => item.id === entryId ? nextEntry : item),
+        entries: section.entries.map((item) => item.id === entryId ? updated : item),
       });
     },
 

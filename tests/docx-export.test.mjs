@@ -175,6 +175,66 @@ test('DOCX embeds PNG and JPEG sample portrait bytes with an image relationship 
   }
 });
 
+test('DOCX clips PNG, JPEG, and WebP photos to centered circles without mutating resume photo data', async () => {
+  const previousBitmap = globalThis.createImageBitmap;
+  const previousDocument = globalThis.document;
+  const drawCalls = [];
+  const context = {
+    clearRect: (...args) => drawCalls.push(['clearRect', ...args]),
+    save: () => drawCalls.push(['save']),
+    beginPath: () => drawCalls.push(['beginPath']),
+    arc: (...args) => drawCalls.push(['arc', ...args]),
+    clip: () => drawCalls.push(['clip']),
+    drawImage: (...args) => drawCalls.push(['drawImage', ...args.slice(1)]),
+    restore: () => drawCalls.push(['restore']),
+  };
+  globalThis.createImageBitmap = async (blob) => {
+    assert.ok(blob.type === 'image/png' || blob.type === 'image/jpeg' || blob.type === 'image/webp');
+    return { width: 320, height: 400, close() {} };
+  };
+  globalThis.document = {
+    createElement(name) {
+      assert.equal(name, 'canvas');
+      return {
+        width: 0,
+        height: 0,
+        getContext: () => context,
+        toBlob(callback, mimeType) {
+          assert.equal(mimeType, 'image/png');
+          callback(new Blob([profilePhotos.png], { type: mimeType }));
+        },
+      };
+    },
+  };
+
+  try {
+    for (const [format, mimeType] of [['png', 'image/png'], ['jpg', 'image/jpeg'], ['webp', 'image/webp']]) {
+      const document = structuredClone(SAMPLE_RESUME_EN);
+      const source = `data:${mimeType};base64,${Buffer.from(profilePhotos[format]).toString('base64')}`;
+      document.content.personal.photo = { src: source, altText: 'Circular sample portrait' };
+      const result = await docxParts(document);
+
+      assert.equal(document.content.personal.photo.src, source, 'the canonical uploaded photo remains unchanged');
+      assert.ok([...result.entries.keys()].some((name) => /^word\/media\/image\d+\.png$/.test(name)));
+      assert.match(result.relationships, /relationships\/image/);
+      assert.match(result.xml, /Circular sample portrait/);
+      const extent = result.xml.match(/<wp:extent cx="(\d+)" cy="(\d+)"/);
+      assert.ok(extent);
+      assert.equal(extent[1], extent[2], 'the cropped image embedded in Word is square');
+    }
+
+    assert.ok(drawCalls.some(([name]) => name === 'clearRect'), 'transparent canvas is cleared before drawing');
+    assert.deepEqual(drawCalls.find(([name]) => name === 'arc'), ['arc', 160, 160, 160, 0, Math.PI * 2]);
+    assert.ok(drawCalls.some(([name]) => name === 'clip'), 'drawing is clipped to the circular path');
+    assert.deepEqual(drawCalls.find(([name]) => name === 'drawImage'), ['drawImage', 0, 40, 320, 320, 0, 0, 320, 320]);
+  } finally {
+    if (previousBitmap) globalThis.createImageBitmap = previousBitmap;
+    else delete globalThis.createImageBitmap;
+    if (previousDocument) globalThis.document = previousDocument;
+    else delete globalThis.document;
+  }
+});
+
 test('DOCX safely converts WebP photos to PNG in browser-capable environments', async () => {
   const previousBitmap = globalThis.createImageBitmap;
   const previousDocument = globalThis.document;
@@ -184,7 +244,7 @@ test('DOCX safely converts WebP photos to PNG in browser-capable environments', 
       return {
         width: 0,
         height: 0,
-        getContext: () => ({ drawImage() {} }),
+        getContext: () => ({ clearRect() {}, save() {}, beginPath() {}, arc() {}, clip() {}, drawImage() {}, restore() {} }),
         toBlob(callback) { callback(new Blob([profilePhotos.png], { type: 'image/png' })); },
       };
     },
@@ -217,6 +277,24 @@ test('DOCX handles missing or invalid photos without blocking export', async () 
   const invalidPhotoResult = await docxParts(invalidPhoto);
   assert.ok(textFromXml(invalidPhotoResult.xml).includes('Alexandra Chen'));
   assert.ok(![...invalidPhotoResult.entries.keys()].some((name) => name.startsWith('word/media/')));
+});
+
+test('DOCX keeps PNG photo fallback and completes export when circular processing fails', async () => {
+  const previousBitmap = globalThis.createImageBitmap;
+  const document = structuredClone(SAMPLE_RESUME_EN);
+  document.content.personal.photo = {
+    src: `data:image/png;base64,${Buffer.from(profilePhotos.png).toString('base64')}`,
+    altText: 'Fallback profile portrait',
+  };
+  globalThis.createImageBitmap = async () => { throw new Error('Image decoding is unavailable.'); };
+  try {
+    const result = await docxParts(document);
+    assert.ok(textFromXml(result.xml).includes('Alexandra Chen'));
+    assert.ok([...result.entries.keys()].some((name) => /^word\/media\/image\d+\.png$/.test(name)));
+  } finally {
+    if (previousBitmap) globalThis.createImageBitmap = previousBitmap;
+    else delete globalThis.createImageBitmap;
+  }
 });
 
 test('DOCX preserves long content and handles omitted optional fields safely', async () => {
