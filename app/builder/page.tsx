@@ -6,18 +6,21 @@ import { useSearchParams } from 'next/navigation';
 import {
   Printer,
   ChevronDown,
-  Layout,
   Check,
   ArrowLeft,
   ArrowRight,
-  ShieldAlert,
-  Sparkles,
-  Maximize2,
   FileText,
+  FileCheck,
+  HelpCircle,
+  Loader2,
 } from 'lucide-react';
 import { useI18nStore } from '@/features/internationalization/store';
 import { TEMPLATES_REGISTRY, getTemplateById } from '@/features/templates/registry';
 import { TemplateDefinition } from '@/features/templates/types';
+import { ResumeData } from '@/types/resume';
+import { downloadResumeDocx } from '@/features/docx-export/downloadDocx';
+import { downloadResumePdf } from '@/features/pdf-export/downloadPdf';
+import { FormatComparisonModal } from '@/features/export/FormatComparisonModal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
@@ -26,7 +29,7 @@ function ResumeBuilderContent() {
   const searchParams = useSearchParams();
   const templateIdParam = searchParams.get('template') || 'ats-classic';
 
-  const { t, dir } = useI18nStore();
+  const { t, dir, locale } = useI18nStore();
   const ArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
 
   const [activeTemplate, setActiveTemplate] = useState<TemplateDefinition>(() =>
@@ -37,8 +40,10 @@ function ResumeBuilderContent() {
   const [activeTab, setActiveTab] = useState<'personal' | 'experience' | 'skills'>('personal');
   const [paperSize, setPaperSize] = useState<'a4' | 'letter'>('a4');
   const [viewMode, setViewMode] = useState<'split' | 'form-only' | 'preview-only'>('split');
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
+  const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
 
-  // Initial resume data state (in-memory)
+  // Resume Universal Data State
   const [formData, setFormData] = useState({
     fullName: 'Alexander Vance',
     jobTitle: 'Principal Software Architect',
@@ -61,9 +66,74 @@ function ResumeBuilderContent() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handlePrint = () => {
-    if (typeof window !== 'undefined') {
-      window.print();
+  // Convert builder form state to Universal ResumeData
+  const getUniversalResumeData = (): ResumeData => {
+    const bulletList = formData.experienceBullets
+      .split('\n')
+      .map((b) => b.trim())
+      .filter(Boolean);
+
+    const skillEntries = formData.skills
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((name, idx) => ({
+        id: `skill-${idx}`,
+        name,
+      }));
+
+    return {
+      id: 'current-session-resume',
+      templateId: activeTemplate.id,
+      locale,
+      direction: dir,
+      paperSize,
+      personal: {
+        fullName: formData.fullName,
+        jobTitle: formData.jobTitle,
+        email: formData.email,
+        phone: formData.phone,
+        location: formData.location,
+        portfolio: formData.portfolio,
+        summary: formData.summary,
+      },
+      experience: [
+        {
+          id: 'exp-1',
+          jobTitle: formData.experienceRole,
+          company: formData.experienceCompany,
+          startDate: formData.experienceDates.split('—')[0]?.trim() || '2021',
+          endDate: formData.experienceDates.split('—')[1]?.trim() || 'Present',
+          current: true,
+          bullets: bulletList,
+        },
+      ],
+      education: [
+        {
+          id: 'edu-1',
+          degree: 'B.S. in Computer Science',
+          school: 'University of California, Berkeley',
+          endDate: '2015',
+        },
+      ],
+      skills: skillEntries,
+      projects: [],
+      certifications: [],
+      languages: [],
+    };
+  };
+
+  const handleExportPdf = () => {
+    downloadResumePdf(formData.fullName);
+  };
+
+  const handleExportDocx = async () => {
+    try {
+      setIsExportingDocx(true);
+      const universalData = getUniversalResumeData();
+      await downloadResumeDocx(universalData, activeTemplate, { paperSize });
+    } finally {
+      setIsExportingDocx(false);
     }
   };
 
@@ -134,7 +204,7 @@ function ResumeBuilderContent() {
               </Link>
             </div>
 
-            {/* Right: Paper size, View switcher & Print / Export Action */}
+            {/* Right: Paper size, Format comparison, PDF & DOCX Export Actions */}
             <div className="flex items-center gap-2">
               {/* Paper toggle */}
               <div className="hidden sm:flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium dark:border-slate-800 dark:bg-slate-800">
@@ -169,14 +239,41 @@ function ResumeBuilderContent() {
                   onClick={() => setViewMode(viewMode === 'form-only' ? 'preview-only' : 'form-only')}
                   className="px-2.5 py-1 rounded bg-white dark:bg-slate-700 text-slate-800 dark:text-white font-medium"
                 >
-                  {viewMode === 'form-only' ? 'Show Preview' : 'Edit Form'}
+                  {viewMode === 'form-only' ? 'Preview' : 'Form'}
                 </button>
               </div>
 
-              {/* Print / Save Action */}
-              <Button size="sm" onClick={handlePrint} className="gap-1.5 font-semibold shadow-xs">
-                <Printer className="h-4 w-4" />
-                <span>{t.builder.printDownload}</span>
+              {/* Format Comparison Tooltip / Button */}
+              <button
+                type="button"
+                onClick={() => setComparisonModalOpen(true)}
+                className="hidden md:inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 p-1.5"
+                title="Compare PDF vs Word DOCX"
+              >
+                <HelpCircle className="h-4 w-4" />
+                <span className="text-[11px] underline">PDF vs DOCX</span>
+              </button>
+
+              {/* DOCX Export Action */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportDocx}
+                disabled={isExportingDocx}
+                className="gap-1.5 font-semibold shadow-2xs border-slate-300 dark:border-slate-700"
+              >
+                {isExportingDocx ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                ) : (
+                  <FileText className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                )}
+                <span>Word (.docx)</span>
+              </Button>
+
+              {/* PDF Export Action */}
+              <Button size="sm" onClick={handleExportPdf} className="gap-1.5 font-semibold shadow-xs">
+                <FileCheck className="h-4 w-4" />
+                <span>PDF (.pdf)</span>
               </Button>
             </div>
           </div>
@@ -390,8 +487,8 @@ function ResumeBuilderContent() {
                   </div>
 
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 space-y-1">
-                    <p className="font-semibold text-slate-700 dark:text-slate-300">Pro-Tip for ATS Scanning:</p>
-                    <p>Keep skills separated by commas or short clear bullet points to allow recruitment parsers to match your competencies against job descriptions.</p>
+                    <p className="font-semibold text-slate-700 dark:text-slate-300">Dual Export Guaranteed:</p>
+                    <p>Both PDF and Word (.docx) exports faithfully consume your inputs and apply the selected template formatting.</p>
                   </div>
                 </div>
               )}
@@ -527,6 +624,14 @@ function ResumeBuilderContent() {
           </div>
         </div>
       </Container>
+
+      {/* Format Comparison Modal */}
+      <FormatComparisonModal
+        isOpen={comparisonModalOpen}
+        onClose={() => setComparisonModalOpen(false)}
+        onDownloadPdf={handleExportPdf}
+        onDownloadDocx={handleExportDocx}
+      />
     </div>
   );
 }

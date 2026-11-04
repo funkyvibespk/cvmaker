@@ -13,6 +13,13 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
     recommendedFor: 'Engineering, Software, Data Science, Operations',
     tags: ['ATS High-Match', 'Minimalist', 'Standard Font'],
     isAtsOptimized: true,
+    exportStyles: {
+      primaryHex: '0F172A',
+      secondaryHex: '475569',
+      fontFamily: 'Calibri',
+      headerAlignment: 'center',
+      hasAccentBar: false,
+    },
   },
   {
     id: 'executive-modern',
@@ -26,6 +33,13 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
     recommendedFor: 'Directors, Senior Managers, Consultants',
     tags: ['Executive', 'Modern', 'Clean Margins'],
     isAtsOptimized: true,
+    exportStyles: {
+      primaryHex: '1E3A8A',
+      secondaryHex: '334155',
+      fontFamily: 'Calibri',
+      headerAlignment: 'left',
+      hasAccentBar: true,
+    },
   },
   {
     id: 'corporate-slate',
@@ -39,6 +53,13 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
     recommendedFor: 'Finance, Banking, Enterprise Sales, Legal',
     tags: ['Corporate', 'Two-Column', 'Traditional'],
     isAtsOptimized: true,
+    exportStyles: {
+      primaryHex: '334155',
+      secondaryHex: '64748B',
+      fontFamily: 'Arial',
+      headerAlignment: 'split',
+      hasAccentBar: true,
+    },
   },
   {
     id: 'tech-minimalist',
@@ -52,6 +73,13 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
     recommendedFor: 'Full-Stack Developers, DevOps, Cloud Architects',
     tags: ['Tech Focus', 'Projects First', 'Compact'],
     isAtsOptimized: true,
+    exportStyles: {
+      primaryHex: '065F46',
+      secondaryHex: '1F2937',
+      fontFamily: 'Calibri',
+      headerAlignment: 'left',
+      hasAccentBar: false,
+    },
   },
   {
     id: 'creative-studio',
@@ -65,6 +93,13 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
     recommendedFor: 'UI/UX Designers, Brand Strategists, Art Directors',
     tags: ['Sidebar', 'Visual Balance', 'Portfolio Ready'],
     isAtsOptimized: false,
+    exportStyles: {
+      primaryHex: '831843',
+      secondaryHex: '4C1D95',
+      fontFamily: 'Arial',
+      headerAlignment: 'left',
+      hasAccentBar: true,
+    },
   },
   {
     id: 'academic-research',
@@ -78,6 +113,13 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
     recommendedFor: 'Professors, Postdoctoral Researchers, Educators',
     tags: ['Academic', 'Publications', 'Formal Serif'],
     isAtsOptimized: true,
+    exportStyles: {
+      primaryHex: '1D4ED8',
+      secondaryHex: '1E293B',
+      fontFamily: 'Georgia',
+      headerAlignment: 'center',
+      hasAccentBar: false,
+    },
   },
   {
     id: 'swiss-clean-grid',
@@ -91,6 +133,13 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
     recommendedFor: 'Architects, Product Managers, Analysts',
     tags: ['Swiss Style', 'High Contrast', 'Grid Aligned'],
     isAtsOptimized: true,
+    exportStyles: {
+      primaryHex: '18181B',
+      secondaryHex: '52525B',
+      fontFamily: 'Arial',
+      headerAlignment: 'left',
+      hasAccentBar: false,
+    },
   },
   {
     id: 'metro-professional',
@@ -104,6 +153,13 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
     recommendedFor: 'Marketing Leads, Product Owners, Healthcare Admins',
     tags: ['Contemporary', 'Metrics Highlight', 'Section Badges'],
     isAtsOptimized: true,
+    exportStyles: {
+      primaryHex: '0284C7',
+      secondaryHex: '334155',
+      fontFamily: 'Calibri',
+      headerAlignment: 'split',
+      hasAccentBar: true,
+    },
   },
   {
     id: 'harvard-editorial',
@@ -117,6 +173,13 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
     recommendedFor: 'Executives, Legal Counsel, Policy Analysts',
     tags: ['Ivy League', 'Traditional Serif', 'Editorial'],
     isAtsOptimized: true,
+    exportStyles: {
+      primaryHex: '78350F',
+      secondaryHex: '1C1917',
+      fontFamily: 'Georgia',
+      headerAlignment: 'center',
+      hasAccentBar: false,
+    },
   },
   {
     id: 'nordic-direct',
@@ -130,10 +193,16 @@ export const TEMPLATES_REGISTRY: TemplateDefinition[] = [
     recommendedFor: 'Growth Specialists, Startup Founders, Agile Coaches',
     tags: ['Startup', 'Bold Header', 'Impactful'],
     isAtsOptimized: true,
+    exportStyles: {
+      primaryHex: '4F46E5',
+      secondaryHex: '1E1B4B',
+      fontFamily: 'Calibri',
+      headerAlignment: 'left',
+      hasAccentBar: true,
+    },
   },
 ];
 
 export function getTemplateById(id: string): TemplateDefinition {
   return TEMPLATES_REGISTRY.find((tpl) => tpl.id === id) || TEMPLATES_REGISTRY[0];
 }
-

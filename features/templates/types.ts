@@ -13,6 +13,15 @@ export type TemplateLayoutType =
   | 'sidebar'
   | 'compact';
 
+export interface TemplateExportStyles {
+  primaryHex: string;
+  secondaryHex: string;
+  fontFamily: string;
+  headerAlignment: 'left' | 'center' | 'split';
+  hasAccentBar: boolean;
+  borderWidthTwips?: number;
+}
+
 export interface TemplateDefinition {
   id: string;
   name: string;
@@ -26,5 +35,5 @@ export interface TemplateDefinition {
   recommendedFor: string;
   tags: string[];
   isAtsOptimized: boolean;
+  exportStyles: TemplateExportStyles;
 }
-
