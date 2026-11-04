@@ -304,11 +304,11 @@ body {
   }
 
   html.resume-pdf-print .resume-presentation--print {
-    width: var(--resume-paper-width) !important;
+    width: 100% !important;
     max-width: none !important;
-    min-height: var(--resume-paper-height) !important;
+    min-height: 0 !important;
     margin: 0 !important;
-    padding: var(--resume-margin-top) var(--resume-margin-right) var(--resume-margin-bottom) var(--resume-margin-left) !important;
+    padding: 0 !important;
     border: 0 !important;
     box-shadow: none !important;
     break-after: auto;

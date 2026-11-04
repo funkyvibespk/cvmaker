@@ -1,8 +1,9 @@
-import type { PaperSize } from '../../schemas/resume.schema.ts';
+import type { MarginSettings, PaperSize } from '../../schemas/resume.schema.ts';
 import { getResumePageRule } from './printLayout';
 
 export function downloadResumePdf(
   paperSize: PaperSize,
+  margins: MarginSettings,
   fullName?: string,
   afterPrint?: () => void,
 ): void {
@@ -20,7 +21,7 @@ export function downloadResumePdf(
 
   const printStyle = document.createElement('style');
   printStyle.dataset.resumePrintPage = 'true';
-  printStyle.textContent = getResumePageRule(paperSize);
+  printStyle.textContent = getResumePageRule(paperSize, margins);
   document.head.appendChild(printStyle);
   document.documentElement.classList.add('resume-pdf-print');
 
