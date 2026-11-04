@@ -61,6 +61,7 @@ interface ResumeStore {
   addEntry: (section: RepeatableSection, entry: unknown) => boolean;
   updateEntry: (section: RepeatableSection, id: string, patch: unknown) => boolean;
   deleteEntry: (section: RepeatableSection, id: string) => boolean;
+  moveEntry: (section: RepeatableSection, id: string, direction: 'up' | 'down') => boolean;
   addCustomSectionEntry: (sectionId: string, entry: unknown) => boolean;
   updateCustomSectionEntry: (sectionId: string, entryId: string, patch: unknown) => boolean;
   deleteCustomSectionEntry: (sectionId: string, entryId: string) => boolean;
@@ -282,6 +283,22 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
         ...resume.content,
         [section]: currentEntries.filter((entry) => entry.id !== id),
       } as ResumeContent;
+      commitDraft({ ...resume, content });
+      return true;
+    },
+
+    moveEntry: (section, id, direction) => {
+      const resume = get().resume;
+      const currentEntries = resume.content[section] as Array<{ id: string }>;
+      const currentIndex = currentEntries.findIndex((entry) => entry.id === id);
+      if (currentIndex < 0) return false;
+
+      const nextIndex = currentIndex + (direction === 'up' ? -1 : 1);
+      if (nextIndex < 0 || nextIndex >= currentEntries.length) return false;
+
+      const reordered = [...currentEntries];
+      [reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]];
+      const content = { ...resume.content, [section]: reordered } as ResumeContent;
       commitDraft({ ...resume, content });
       return true;
     },

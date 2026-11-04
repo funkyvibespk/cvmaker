@@ -40,7 +40,7 @@ cvmaker/
 │   ├── templates/              # Template catalog, template registry, metadata
 │   │   ├── registry.ts         # Catalog of 10 template entries, without distinct renderers for each
 │   │   └── types.ts            # Template definition and configuration contracts
-│   ├── resume-editor/          # Planned home for expanded canonical form sections
+│   ├── resume-editor/          # Core editor fields and five-section builder workspace
 │   ├── resume-preview/         # Planned reusable preview, zoom and pagination components
 │   ├── pdf-export/             # PDF generation utilities, print stylesheets, triggers
 │   │   └── downloadPdf.ts      # Native vector browser print trigger
@@ -71,15 +71,15 @@ cvmaker/
 
 ```mermaid
 flowchart LR
-    A["Current builder fields"] --> B["Zustand canonical ResumeDocument"]
+    A["Five core builder sections"] --> B["Zustand canonical ResumeDocument"]
     B --> C["Zod validation at load/edit/export boundaries"]
-    C --> D["Current single-layout preview"]
+    C --> D["Baseline preview of all core section entries"]
     B --> E["Browser print / PDF flow"]
     B --> F["Legacy adapter"]
     F --> G["Existing DOCX generator"]
 ```
 
-The builder currently exposes personal information, one experience entry with repeatable achievements, and skills. The store API supports the full canonical model, but complete section editing controls and a template renderer are future work. Resume data remains in browser memory and is not persisted. The interface language store is separate from the resume document's language and direction settings.
+The builder exposes personal information, multiple experience entries and achievements, education, skills, and projects. Experience, education, and project entries can be reordered by stable ID. The preview displays all entries from those five core sections, but remains a single baseline layout. Store support for other canonical sections exists; their editor controls and a final template renderer are future work. Resume data remains in browser memory and is not persisted. The interface language store is separate from the resume document's language and direction settings; the preview applies the document's language and direction.
 
 ---
 

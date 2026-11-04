@@ -8,7 +8,7 @@
 | **Milestone 2** | Application Foundation, Design System & Homepage | **COMPLETED** | Completed |
 | **Milestone 3** | Professional template gallery | **COMPLETED** | Completed |
 | **Milestone 4** | Resume data model and validation | **COMPLETED** | Completed |
-| **Milestone 5** | Resume builder and dynamic forms | Canonical in-memory store + current editor migrated; expanded forms pending | In Progress |
+| **Milestone 5** | Resume builder and dynamic forms | Core five-section editor implemented; remaining sections pending | In Progress |
 | **Milestone 6** | Universal template rendering engine | Not started (10 registry entries exist; distinct renderers are not implemented) | Upcoming |
 | **Milestone 7** | Live preview and customization | Baseline Preview Live | Upcoming |
 | **Milestone 8** | PDF generation and export | Print Engine Configured | Upcoming |
@@ -49,8 +49,16 @@
 
 - `schemas/resume.schema.ts` defines the validated, template-independent `ResumeDocument`; content and design configuration are separate.
 - `stores/resumeStore.ts` holds the current document in Zustand memory only. It supports blank initialization, English/Arabic fixtures, validation, personal data updates, ID-based CRUD for all repeatable sections (including entries nested in custom sections), design updates, section visibility/order, and reset.
-- The existing `/builder` personal, first-experience, achievements, and skills controls now bind to the central store. The current visual preview reads the same canonical state. Template and paper-size controls update design configuration.
+- The initial `/builder` personal, first-experience, achievements, and skills controls were migrated to the central store. (Expanded by Milestone 3A below.)
 - PDF and DOCX exports are gated by canonical schema validation. PDF generation remains the existing print flow. `lib/legacyResumeAdapter.ts` maps canonical fields into the unchanged legacy DOCX API. The legacy API cannot represent awards, volunteering, publications, interests, or custom sections, so those sections remain stored but are not emitted by the current DOCX exporter.
-- The builder still exposes only its existing personal, experience, and skills tabs; it does not yet provide complete editing controls for all canonical sections, photo uploads, section ordering/visibility, fonts, or colors. The displayed preview remains a single baseline layout rather than a template rendering engine.
+- At the end of Milestone 2, the builder still exposed only personal, experience, and skills tabs; this was superseded by the Milestone 3A editor below. Photo, section ordering/visibility, fonts, and colors outside the core five sections remain future work. The displayed preview remains a single baseline layout rather than a template rendering engine.
 - Resume data is not persisted; leaving or refreshing the page loses the in-memory draft. A dirty-state navigation warning is not currently implemented.
-- Milestone 2 verification: `npm test` passes (20 tests), `npx tsc --noEmit --incremental false` passes, and `npm run build` passes. `npm run lint` reports two existing `no-explicit-any` errors in the template gallery/showcase and seven unrelated warnings; no findings were reported in Milestone 2 code.
+- Milestone 2.1 removed the gallery/showcase `no-explicit-any` errors and changed the Node test command to suppress Node 24's `MODULE_TYPELESS_PACKAGE_JSON` advisory for directly imported TypeScript modules. The project remains without a package-wide ESM declaration.
+
+## Milestone 3A: Core Professional Resume Editor
+
+- `/builder` now has a responsive section navigator, editor workspace, and live preview. Mobile users can switch between edit and preview; desktop keeps all three areas accessible side by side.
+- The five editor sections are personal information (including validated profile photo input), work experience, education, skills, and projects. Experience, education, and projects support multiple records and stable-ID reordering. Experience achievements can be added, edited, and removed.
+- Fields use the canonical schema property names and update the existing in-memory Zustand store. Validation messages are shown next to applicable fields; empty and incomplete records remain in the draft so input is not discarded.
+- The baseline preview reads the canonical document and displays personal/contact details and every experience, education, skill, and project entry. Resume direction and language are applied to the preview. This remains one baseline layout, not the final template engine.
+- Milestone 3A verification: `npm test` passes (21 tests), `npx tsc --noEmit --incremental false` passes, `npm run lint` passes with five pre-existing warnings in unrelated files, `npm run build` passes, and `git diff --check` passes.

@@ -59,6 +59,19 @@ test('adds, edits, and deletes entries in every repeatable resume section by sta
   }
 });
 
+test('reorders repeatable entries by stable ID and respects list boundaries', () => {
+  store.getState().initializeResume(SAMPLE_RESUME_EN);
+  const before = store.getState().resume.content.experience.map((entry) => entry.id);
+
+  assert.equal(store.getState().moveEntry('experience', before[1], 'up'), true);
+  assert.deepEqual(
+    store.getState().resume.content.experience.map((entry) => entry.id),
+    [before[1], before[0], before[2]],
+  );
+  assert.equal(store.getState().moveEntry('experience', before[1], 'up'), false);
+  assert.equal(store.getState().moveEntry('experience', before[2], 'down'), false);
+});
+
 test('updates section visibility and ordering without changing resume content', () => {
   store.getState().initializeResume(SAMPLE_RESUME_EN);
   const originalContentId = store.getState().resume.content.id;
