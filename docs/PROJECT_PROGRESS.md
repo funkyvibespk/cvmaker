@@ -10,8 +10,8 @@
 | **Milestone 4** | Resume data model and validation | **COMPLETED** | Completed |
 | **Milestone 5** | Resume builder and dynamic forms | Core five-section editor implemented; remaining sections pending | In Progress |
 | **Milestone 6** | Universal template rendering engine | Not started (10 registry entries exist; distinct renderers are not implemented) | Upcoming |
-| **Milestone 7** | Live preview and customization | Baseline Preview Live | Upcoming |
-| **Milestone 8** | PDF generation and export | Print Engine Configured | Upcoming |
+| **Milestone 7** | Live preview and customization | Shared baseline preview is live; advanced customization remains pending | In Progress |
+| **Milestone 8** | PDF generation and export | Dedicated shared-presentation print flow is live; cross-browser QA remains pending | In Progress |
 | **Milestone 9** | Multilingual support and RTL | Substantially completed in M2/M3 | Integrated |
 | **Milestone 10** | SEO, privacy pages and AdSense preparation | Baseline completed | Upcoming |
 | **Milestone 11** | Testing, optimization and bug fixing | Completed Navigation & Interaction Audit | In Progress |
@@ -80,3 +80,13 @@
 - The DOCX button and legacy adapter/generator were not changed in this milestone. DOCX still does not cover all canonical sections and has not been visually upgraded.
 - PDF output was generated and visually inspected locally for English, Arabic/RTL, a comprehensive all-sections resume, optional photo, a long resume, and US Letter. Outputs were 2, 2, 2, 2, 4, and 2 pages respectively. No editor/site UI, blank pages, clipped content, or missing comprehensive sections were observed in those samples. Broader browser/font verification remains outstanding.
 - Focused tests cover the shared presentation, section coverage/order/visibility through the resolver, language/direction, paper geometry, and independence from active editor state. Final command results are recorded with the milestone handoff.
+
+## Milestone 5: Professional DOCX Export from the Shared Resume Model
+
+- The builder's Word export now passes `resolveResumeExportModel` output directly to the DOCX generator. `toLegacyResumeData` remains in the repository but is no longer used by the primary DOCX button.
+- DOCX generation validates and re-resolves the canonical document at its export boundary. It emits all resolver-visible, non-empty canonical sections in configured order, including custom section entries and all supported metadata, descriptions, achievements, dates, locations, technologies, credentials and URLs.
+- Resume text remains editable Word text. The generator uses Word heading styles, native numbered-list definitions for bullets, clickable contact/content links, layout-aware date tabs, canonical typography/accent settings, explicit RTL paragraph/run properties, and configured margins.
+- A4 and Letter section dimensions are rounded to the nearest twip from exact millimeter dimensions. The generator embeds PNG/JPEG photo bytes. WebP is decoded and converted to PNG in browser environments; unavailable or invalid photos are omitted without failing export.
+- Automated DOCX tests unzip and inspect actual generated packages for all canonical sections, order and visibility, links, Arabic RTL markers, photo relationship/media, page geometry, margins, and long-content/optional-field handling.
+- Ten local QA documents were generated for English, Arabic, comprehensive content, with/without photo, long content, A4, Letter, custom sections, and hidden sections/custom order. OOXML inspection confirmed A4 `11906 × 16838` twips, Letter `12240 × 15840` twips, configured margins, editable text, links, and embedded photo bytes. PNG/JPEG embedding and browser WebP-to-PNG conversion are covered by generated portrait fixtures. Page counts and rendered appearance could not be inspected because LibreOffice/Word is not installed in the environment; the render helper was attempted and reported missing `soffice.exe`.
+- Milestone verification: `npm test` passes (39 tests), `npx tsc --noEmit --incremental false` passes, `npm run lint` has zero errors and three existing unused-import warnings in `app/about/page.tsx`, `app/contact/page.tsx`, and `components/ui/Accordion.tsx`, `npm run build` passes, and `git diff --check` passes.

@@ -1,28 +1,18 @@
-import { ResumeData } from '@/types/resume';
-import { TemplateDefinition } from '@/features/templates/types';
+import type { ResumeExportModel } from '@/features/export/resolveResumeExport';
 import { generateResumeDocx } from './generateDocx';
 
-export async function downloadResumeDocx(
-  data: ResumeData,
-  template: TemplateDefinition,
-  options?: { paperSize?: 'a4' | 'letter' }
-): Promise<void> {
-  const blob = await generateResumeDocx(data, template, options);
+export async function downloadResumeDocx(model: ResumeExportModel): Promise<void> {
+  const blob = await generateResumeDocx(model);
+  const cleanName = model.document.content.personal.fullName.trim().replace(/[^\p{L}\p{N}_-]+/gu, '_');
+  const fileName = `${cleanName || 'Resume'}_CV.docx`;
 
-  const cleanName = data.personal.fullName
-    ? data.personal.fullName.trim().replace(/\s+/g, '_')
-    : 'Resume';
-  const fileName = `${cleanName}_CV.docx`;
-
-  if (typeof window !== 'undefined') {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }
+  if (typeof window === 'undefined') return;
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-

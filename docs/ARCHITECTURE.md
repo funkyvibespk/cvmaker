@@ -47,7 +47,7 @@ cvmaker/
 │   │   ├── downloadPdf.ts      # Prints the dedicated resume document root
 │   │   └── printLayout.ts      # A4 and Letter page rules
 │   ├── docx-export/            # Word document (.docx) generation
-│   │   ├── generateDocx.ts     # Universal OpenXML document generator (client-side)
+│   │   ├── generateDocx.ts     # Editable OpenXML generator from resolved canonical content
 │   │   └── downloadDocx.ts     # Client-side blob downloader
 │   ├── export/                 # Format comparison dialogs & utilities
 │   │   └── FormatComparisonModal.tsx
@@ -80,8 +80,8 @@ flowchart LR
     E --> F["Live preview"]
     E --> G["Dedicated print-only document"]
     G --> H["Browser print / PDF"]
-    B --> I["Legacy adapter"]
-    I --> J["Existing DOCX generator"]
+    D --> I["DOCX OpenXML generator"]
+    I --> J["Editable Word document"]
 ```
 
 The builder exposes personal information, multiple experience entries and achievements, education, skills, and projects. Experience, education, and project entries can be reordered by stable ID. The preview displays all entries from those five core sections, but remains a single baseline layout. Store support for other canonical sections exists; their editor controls and a final template renderer are future work. Resume data remains in browser memory and is not persisted. The interface language store is separate from the resume document's language and direction settings; the preview applies the document's language and direction.
@@ -100,25 +100,29 @@ The resolver remains format-neutral; it performs ordering, visibility, and empty
 
 ---
 
-## 5. Existing DOCX Path and Compatibility Boundary
+## 5. DOCX Export and Compatibility Boundary
 
-PDF now consumes the shared resolved presentation. DOCX remains a separate legacy path for the next export milestone:
+DOCX and PDF now start from the same canonical resolver output. PDF uses the shared HTML/CSS presentation; DOCX maps that same ordered section sequence and design configuration to editable Word paragraphs, lists, hyperlinks, an optional embedded image, and page geometry:
 
 ```mermaid
 flowchart TD
     Canonical["Canonical ResumeDocument"] --> Resolver["Shared resolver"]
     Resolver --> Presentation["Live preview and isolated print document"]
     Presentation --> PDF["PDF browser print"]
-    Canonical --> Adapter["Canonical-to-legacy adapter"]
-    Adapter --> Legacy["Legacy ResumeData API"]
-    Legacy --> DOCX["Existing DOCX generator"]
+    Resolver --> DOCXGenerator["DOCX OpenXML generator"]
+    DOCXGenerator --> EditableWord["Editable Word document"]
 ```
 
-The builder validates canonical data before either export path. `lib/legacyResumeAdapter.ts` maps currently supported canonical fields into `types/resume.ts` for the unchanged DOCX generator. That legacy type has no fields for awards, volunteering, publications, interests, or custom sections; those values are retained by the store but are not exported by the current DOCX path. The adapter should be retired only after the DOCX generator is migrated to consume the shared resolved model.
+The builder validates the current Zustand document, resolves order and visibility, and passes the resulting `ResumeExportModel` to both export paths. The DOCX generator validates the canonical document again at its boundary and re-resolves it, preventing mismatched section lists from silently dropping content. It emits all supported standard sections and custom entries as native Word content. Contact and canonical URLs become editable hyperlinks. PNG/JPEG photo bytes are embedded; browser-supported WebP images are converted to PNG before embedding. Missing or inaccessible photo assets do not block export. The legacy `lib/legacyResumeAdapter.ts` remains in the repository for compatibility, but it is no longer used by the builder's primary export button.
+
+DOCX page dimensions are explicitly set in twips from the selected A4 or US Letter size, rounded to the nearest twip; all four configured millimeter margins are applied. Font family, point sizes, accent color, resume language and text direction are read from canonical design settings. Semantic Word heading styles, native list numbering, keep-with-next heading behavior, and tab stops for dates support editable text and multi-page flow.
+
+Automated tests inspect the generated OOXML for content, section ordering/visibility, links, RTL properties, photo relationships/media bytes, page size, margins, and long-content retention. Visual page rendering still depends on an available Word-compatible renderer; do not infer cross-application layout fidelity from XML tests alone.
 
 ### Known Export Limitations:
 - **PDF (.pdf)**:
   - Prints only the shared dedicated resume document. A4, Letter, English, Arabic, photo, comprehensive-section, and long-document outputs have been exercised locally. Browser/font differences still warrant broader cross-browser verification.
 - **Microsoft Word (.docx)**:
-  - Generated by the existing legacy `ResumeData` generator and remains editable, but is not yet guaranteed to meet professional Word layout expectations or support all canonical sections.
-  - RTL and cross-suite rendering need direct output verification before being considered complete.
+  - Uses the canonical resolved model and keeps resume text editable; all visible canonical sections and links are covered by generated OOXML tests.
+  - A4/Letter dimensions and configured margins are verified from `word/document.xml`; PNG photo embedding is verified from the media part and relationship.
+  - Word/LibreOffice visual rendering and Arabic/Urdu appearance remain unverified in this environment because no compatible desktop renderer is installed. Font substitution and cross-suite layout still need verification.

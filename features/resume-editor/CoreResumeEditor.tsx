@@ -19,7 +19,6 @@ import { downloadResumeDocx } from '@/features/docx-export/downloadDocx';
 import { downloadResumePdf } from '@/features/pdf-export/downloadPdf';
 import { ResumePresentation } from '@/features/resume-preview/ResumePresentation';
 import { resolveResumeExportModel, type ResumeExportModel } from '@/features/export/resolveResumeExport';
-import { toLegacyResumeData } from '@/lib/legacyResumeAdapter';
 import { TEMPLATES_REGISTRY, getTemplateById } from '@/features/templates/registry';
 import { createStableResumeId, useResumeStore } from '@/stores/resumeStore';
 import type { EducationEntry, ExperienceEntry, ProjectEntry, SkillEntry } from '@/schemas/resume.schema';
@@ -156,7 +155,10 @@ export function CoreResumeEditor() {
   const handleExportDocx = async () => {
     try {
       setIsExportingDocx(true);
-      if (validateResume()) await downloadResumeDocx(toLegacyResumeData(resume), activeTemplate, { paperSize: resume.design.paperSize });
+      if (validateResume()) {
+        const currentResume = useResumeStore.getState().resume;
+        await downloadResumeDocx(resolveResumeExportModel(currentResume));
+      }
     } finally {
       setIsExportingDocx(false);
     }
