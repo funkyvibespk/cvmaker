@@ -77,13 +77,25 @@ flowchart LR
     B --> E["Browser print / PDF flow"]
     B --> F["Legacy adapter"]
     F --> G["Existing DOCX generator"]
+    B --> H["resolveResumeExportModel"]
+    H --> I["Complete canonical document + ordered visible section descriptors"]
+    I -. "next exporter integration stage" .-> E
+    I -. "next exporter integration stage" .-> G
 ```
 
 The builder exposes personal information, multiple experience entries and achievements, education, skills, and projects. Experience, education, and project entries can be reordered by stable ID. The preview displays all entries from those five core sections, but remains a single baseline layout. Store support for other canonical sections exists; their editor controls and a final template renderer are future work. Resume data remains in browser memory and is not persisted. The interface language store is separate from the resume document's language and direction settings; the preview applies the document's language and direction.
 
+## 4. Export-Neutral Data Resolution
+
+`features/export/resolveResumeExport.ts` accepts the canonical `ResumeDocument` and returns a `ResumeExportModel` containing that complete document plus its ordered, visible, non-empty section descriptors. The document remains the source of truth for every field, including empty sections, optional values, stable IDs, and the full design configuration. The ordered descriptor list references canonical entries without sorting or rewriting them.
+
+The resolver applies `design.sectionOrder`; unmentioned standard sections are appended in schema order. The `customSections` order token expands custom sections in their stored order, and custom sections can also be placed individually by canonical ID. Their resolved IDs are namespaced as `custom:<id>` to avoid collisions with standard section IDs. A hidden or empty section is omitted from the descriptor list, but its canonical data remains in `model.document`.
+
+This is the shared data boundary for future PDF and DOCX migration. In this stage, the existing PDF path still prints the builder preview and the existing DOCX path still converts through `lib/legacyResumeAdapter.ts`; neither consumes `model.sections` yet. That compatibility boundary is explicit so the resolver does not imply output completeness before both renderers are migrated.
+
 ---
 
-## 4. Existing Export Paths and Compatibility Boundary
+## 5. Existing Export Paths and Compatibility Boundary
 
 The project has two client-side export paths, but they do not yet share a fully migrated renderer/export model:
 

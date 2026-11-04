@@ -62,3 +62,12 @@
 - Fields use the canonical schema property names and update the existing in-memory Zustand store. Validation messages are shown next to applicable fields; empty and incomplete records remain in the draft so input is not discarded.
 - The baseline preview reads the canonical document and displays personal/contact details and every experience, education, skill, and project entry. Resume direction and language are applied to the preview. This remains one baseline layout, not the final template engine.
 - Milestone 3A verification: `npm test` passes (21 tests), `npx tsc --noEmit --incremental false` passes, `npm run lint` passes with five pre-existing warnings in unrelated files, `npm run build` passes, and `git diff --check` passes.
+
+## Export Milestone 1: Unified, Lossless Export Architecture
+
+- `features/export/resolveResumeExport.ts` defines `ResumeExportModel` around the canonical `ResumeDocument`; it does not introduce a parallel content schema or remove the legacy adapter.
+- The resolver preserves the complete document and design configuration, and returns a deterministic section sequence ordered by `design.sectionOrder`. Hidden and empty sections are omitted from that sequence while remaining intact in the full document. Missing order tokens are appended in canonical schema order.
+- Standard sections use canonical section IDs. Custom sections retain their canonical IDs and are exposed with an unambiguous `custom:<id>` resolved ID. Explicit entry order and all nested IDs/content are preserved.
+- The existing PDF print and DOCX legacy adapter/generator paths are not yet migrated to consume the resolved section sequence. This stage establishes and tests their common data boundary; output behavior is unchanged pending exporter integration.
+- Export architecture tests cover all populated canonical sections, hidden/empty sections, partial and explicit ordering, custom entries, English/Arabic content, and complete design settings.
+- Export Milestone 1 verification: `npm test` passes (26 tests), `npx tsc --noEmit --incremental false` passes, `npm run lint` passes with five existing unused-import warnings in `app/about/page.tsx`, `app/contact/page.tsx`, `components/ui/Accordion.tsx`, and `features/docx-export/generateDocx.ts`; `npm run build` passes (the sandboxed attempt hit `spawn EPERM` when Next.js launched its TypeScript worker, and the same command passed when rerun with process-launch permission); `git diff --check` passes.
