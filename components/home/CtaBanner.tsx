@@ -43,7 +43,7 @@ export function CtaBanner() {
                   <ArrowIcon className="h-4 w-4" />
                 </Button>
               </Link>
-              <a href="#templates" className="w-full sm:w-auto">
+              <Link href="/templates" className="w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="lg"
@@ -51,7 +51,7 @@ export function CtaBanner() {
                 >
                   {t.ctaBanner.secondaryButton}
                 </Button>
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -59,4 +59,3 @@ export function CtaBanner() {
     </section>
   );
 }
-

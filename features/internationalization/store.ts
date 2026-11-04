@@ -20,12 +20,19 @@ export const useI18nStore = create<I18nState>((set) => ({
   setLocale: (locale: SupportedLocale) => {
     const dir: Direction = isRtlLocale(locale) ? 'rtl' : 'ltr';
     const config = getLocaleConfig(locale);
-    
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('cvmaker_locale', locale);
+      } catch {
+        // Ignore storage exceptions in restricted environments
+      }
+    }
+
     // Safely apply attributes in browser environment
     if (typeof document !== 'undefined') {
       document.documentElement.lang = locale;
       document.documentElement.dir = dir;
-      // Remove previous font classes
       document.documentElement.classList.remove('font-sans', 'font-arabic', 'font-urdu');
       document.documentElement.classList.add(config.fontClass);
     }
@@ -40,4 +47,3 @@ export const useI18nStore = create<I18nState>((set) => ({
     set({ resumeLocale });
   },
 }));
-

@@ -2,94 +2,21 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Check, ShieldCheck, Eye, ArrowRight, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useI18nStore } from '@/features/internationalization/store';
+import { TEMPLATES_REGISTRY } from '@/features/templates/registry';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Container } from '@/components/ui/Container';
 
-interface TemplateItem {
-  id: string;
-  name: string;
-  category: 'ats' | 'modern' | 'professional' | 'creative';
-  categoryLabel: string;
-  description: string;
-  atsScore: string;
-  accentColor: string;
-  layoutType: 'single-column' | 'two-column' | 'sidebar' | 'compact';
-}
-
-const TEMPLATES: TemplateItem[] = [
-  {
-    id: 'ats-classic',
-    name: 'ATS Classic Clean',
-    category: 'ats',
-    categoryLabel: 'ATS-Friendly',
-    description: 'High-parsing single-column layout strictly adhering to global recruiter and algorithm standards.',
-    atsScore: '99% ATS Score',
-    accentColor: '#1E293B',
-    layoutType: 'single-column',
-  },
-  {
-    id: 'executive-modern',
-    name: 'Executive Modern',
-    category: 'modern',
-    categoryLabel: 'Modern',
-    description: 'Balanced typographic hierarchy with subtle divider accents, ideal for mid and senior specialists.',
-    atsScore: '97% ATS Score',
-    accentColor: '#1E3A8A',
-    layoutType: 'single-column',
-  },
-  {
-    id: 'corporate-slate',
-    name: 'Corporate Premier',
-    category: 'professional',
-    categoryLabel: 'Corporate',
-    description: 'Sophisticated header block with streamlined experience timelines for management professionals.',
-    atsScore: '96% ATS Score',
-    accentColor: '#334155',
-    layoutType: 'two-column',
-  },
-  {
-    id: 'tech-minimalist',
-    name: 'Tech Minimalist',
-    category: 'modern',
-    categoryLabel: 'Minimal',
-    description: 'Dense, clean skills presentation and project focus engineered specifically for developers & engineers.',
-    atsScore: '98% ATS Score',
-    accentColor: '#065F46',
-    layoutType: 'single-column',
-  },
-  {
-    id: 'creative-sidebar',
-    name: 'Creative Studio',
-    category: 'creative',
-    categoryLabel: 'Creative',
-    description: 'Left accent column highlighting profile summary, competencies, and language proficiencies.',
-    atsScore: '94% ATS Score',
-    accentColor: '#831843',
-    layoutType: 'sidebar',
-  },
-  {
-    id: 'academic-compact',
-    name: 'Academic & Research',
-    category: 'professional',
-    categoryLabel: 'Academic',
-    description: 'Structured publication, certification, and pedagogical research format for scholars and educators.',
-    atsScore: '98% ATS Score',
-    accentColor: '#1D4ED8',
-    layoutType: 'compact',
-  },
-];
-
 export function TemplateShowcase() {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'ats' | 'modern' | 'professional' | 'creative'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'ats' | 'modern' | 'corporate' | 'creative'>('all');
   const { t, dir } = useI18nStore();
   const ArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
 
   const filteredTemplates = activeFilter === 'all'
-    ? TEMPLATES
-    : TEMPLATES.filter((tpl) => tpl.category === activeFilter);
+    ? TEMPLATES_REGISTRY.slice(0, 6)
+    : TEMPLATES_REGISTRY.filter((tpl) => tpl.category === activeFilter).slice(0, 6);
 
   return (
     <section id="templates" className="py-20 bg-white dark:bg-slate-900">
@@ -112,7 +39,7 @@ export function TemplateShowcase() {
             { id: 'all', label: t.templates.filterAll },
             { id: 'ats', label: t.templates.filterAts },
             { id: 'modern', label: t.templates.filterModern },
-            { id: 'professional', label: t.templates.filterProfessional },
+            { id: 'corporate', label: t.gallery.filterCorporate },
             { id: 'creative', label: t.templates.filterCreative },
           ].map((tab) => (
             <button
@@ -187,7 +114,7 @@ export function TemplateShowcase() {
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                     {template.name}
                   </h3>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed line-clamp-2">
                     {template.description}
                   </p>
                 </div>
@@ -204,8 +131,17 @@ export function TemplateShowcase() {
             </div>
           ))}
         </div>
+
+        {/* View All Templates CTA */}
+        <div className="mt-12 text-center">
+          <Link href="/templates">
+            <Button variant="outline" size="lg" className="font-semibold gap-2">
+              <span>{t.ctaBanner.secondaryButton}</span>
+              <ArrowIcon className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
       </Container>
     </section>
   );
 }
-

@@ -47,11 +47,11 @@ export function Hero() {
                 <ArrowIcon className="h-4 w-4" />
               </Button>
             </Link>
-            <a href="#templates" className="w-full sm:w-auto">
+            <Link href="/templates" className="w-full sm:w-auto">
               <Button variant="outline" size="lg" className="w-full sm:w-auto text-base">
                 {t.hero.ctaSecondary}
               </Button>
-            </a>
+            </Link>
           </div>
 
           {/* Trust Value Badges */}
@@ -148,4 +148,3 @@ export function Hero() {
     </section>
   );
 }
-

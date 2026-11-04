@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { FileText, Menu, X, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useI18nStore } from '@/features/internationalization/store';
 import { LanguageSelector } from './LanguageSelector';
@@ -11,22 +12,38 @@ import { Container } from '@/components/ui/Container';
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { t, dir } = useI18nStore();
+  const pathname = usePathname();
 
   const navLinks = [
-    { href: '#templates', label: t.nav.templates },
-    { href: '#how-it-works', label: t.nav.howItWorks },
-    { href: '#features', label: t.nav.features },
-    { href: '#faq', label: t.nav.faq },
+    { href: '/templates', label: t.nav.templates, isSection: false },
+    { href: '/#how-it-works', sectionId: 'how-it-works', label: t.nav.howItWorks, isSection: true },
+    { href: '/#features', sectionId: 'features', label: t.nav.features, isSection: true },
+    { href: '/#faq', sectionId: 'faq', label: t.nav.faq, isSection: true },
   ];
 
   const ArrowIcon = dir === 'rtl' ? ArrowLeft : ArrowRight;
+
+  const handleSectionClick = (e: React.MouseEvent, sectionId?: string) => {
+    if (sectionId && pathname === '/') {
+      e.preventDefault();
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+        window.history.pushState(null, '', `/#${sectionId}`);
+      }
+    }
+    setMobileMenuOpen(false);
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md transition-colors dark:border-slate-800 dark:bg-slate-950/90">
       <Container>
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 rounded-lg p-1">
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 rounded-lg p-1"
+          >
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white shadow-sm transition-transform group-hover:scale-105 dark:bg-white dark:text-slate-950">
               <FileText className="h-5 w-5" />
             </div>
@@ -43,13 +60,14 @@ export function Navbar() {
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-600 dark:text-slate-300">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.href}
                 href={link.href}
+                onClick={(e) => handleSectionClick(e, link.sectionId)}
                 className="transition-colors hover:text-slate-950 dark:hover:text-white focus:outline-none focus-visible:text-blue-600"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </nav>
 
@@ -84,14 +102,14 @@ export function Navbar() {
         <div className="border-b border-slate-200 bg-white px-4 py-5 shadow-lg sm:hidden dark:border-slate-800 dark:bg-slate-950 animate-in slide-in-from-top-2 duration-200">
           <nav className="flex flex-col space-y-3.5">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.href}
                 href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={(e) => handleSectionClick(e, link.sectionId)}
                 className="text-base font-medium text-slate-700 transition hover:text-blue-600 dark:text-slate-200"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
             <div className="pt-2">
               <Link href="/builder" onClick={() => setMobileMenuOpen(false)} className="block w-full">
@@ -107,4 +125,3 @@ export function Navbar() {
     </header>
   );
 }
-

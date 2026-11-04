@@ -2,13 +2,26 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { FileText, ShieldCheck, Heart } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { FileText, ShieldCheck } from 'lucide-react';
 import { useI18nStore } from '@/features/internationalization/store';
 import { Container } from '@/components/ui/Container';
 
 export function Footer() {
   const { t } = useI18nStore();
+  const pathname = usePathname();
   const year = 2026;
+
+  const handleSectionClick = (e: React.MouseEvent, sectionId: string) => {
+    if (pathname === '/') {
+      e.preventDefault();
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+        window.history.pushState(null, '', `/#${sectionId}`);
+      }
+    }
+  };
 
   return (
     <footer className="border-t border-slate-200/80 bg-slate-50 text-slate-600 transition-colors dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
@@ -40,24 +53,36 @@ export function Footer() {
             </h4>
             <ul className="space-y-2.5 text-sm">
               <li>
-                <a href="#templates" className="hover:text-slate-950 dark:hover:text-white transition">
+                <Link href="/templates" className="hover:text-slate-950 dark:hover:text-white transition">
                   {t.nav.templates}
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#how-it-works" className="hover:text-slate-950 dark:hover:text-white transition">
+                <Link
+                  href="/#how-it-works"
+                  onClick={(e) => handleSectionClick(e, 'how-it-works')}
+                  className="hover:text-slate-950 dark:hover:text-white transition"
+                >
                   {t.nav.howItWorks}
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#features" className="hover:text-slate-950 dark:hover:text-white transition">
+                <Link
+                  href="/#features"
+                  onClick={(e) => handleSectionClick(e, 'features')}
+                  className="hover:text-slate-950 dark:hover:text-white transition"
+                >
                   {t.nav.features}
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#faq" className="hover:text-slate-950 dark:hover:text-white transition">
+                <Link
+                  href="/#faq"
+                  onClick={(e) => handleSectionClick(e, 'faq')}
+                  className="hover:text-slate-950 dark:hover:text-white transition"
+                >
                   {t.nav.faq}
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

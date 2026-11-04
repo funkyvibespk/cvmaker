@@ -100,6 +100,54 @@ export interface TranslationDictionary {
     button: string;
     secondaryButton: string;
   };
+  gallery: {
+    badge: string;
+    title: string;
+    subtitle: string;
+    searchPlaceholder: string;
+    filterAll: string;
+    filterAts: string;
+    filterModern: string;
+    filterCorporate: string;
+    filterCreative: string;
+    filterAcademic: string;
+    filterMinimal: string;
+    filterAtsOnly: string;
+    useThisTemplate: string;
+    quickPreview: string;
+    closePreview: string;
+    recommendedFor: string;
+    layoutType: string;
+    allTemplatesCount: string;
+  };
+  builder: {
+    title: string;
+    subtitle: string;
+    activeTemplate: string;
+    changeTemplate: string;
+    personalTab: string;
+    experienceTab: string;
+    skillsTab: string;
+    fullName: string;
+    jobTitle: string;
+    email: string;
+    phone: string;
+    location: string;
+    portfolio: string;
+    summary: string;
+    experienceRole: string;
+    experienceCompany: string;
+    experienceDates: string;
+    experienceBullets: string;
+    skillsList: string;
+    skillsPlaceholder: string;
+    livePreview: string;
+    printDownload: string;
+    paperA4: string;
+    paperLetter: string;
+    sampleNotice: string;
+    backToTemplates: string;
+  };
   footer: {
     tagline: string;
     disclaimer: string;
@@ -114,4 +162,3 @@ export interface TranslationDictionary {
     zeroStorageNotice: string;
   };
 }
-
